@@ -35,14 +35,15 @@ architecture alu_beh of alu is
 
     type state_type is (idle, crc_busy, can_busy);
 
-    signal state, next_state : state_type := idle;
+    signal state : state_type := idle;
+    signal next_state : state_type := idle;
 
     -- 9 bit Address Bus for RAM
-    signal ram_addr : std_logic_vector(8 downto 0);
+    signal ram_addr : std_logic_vector(8 downto 0) := (others => '0');
 
     -- RAM control signals
-    signal ram_we : std_logic;
-    signal ram_di, ram_do : std_logic_vector(7 downto 0);
+    signal ram_we : std_logic := '0';
+    signal ram_di, ram_do : std_logic_vector(7 downto 0) := (others => '0');
 
     -- signal for storing the command
     -- 0000: flow = a + b
@@ -61,22 +62,22 @@ architecture alu_beh of alu is
     -- 1101: flow = CRC RAM [a..b]
     -- 1110: can = can_reg concat RAM [a..b] (serial)
     -- 1111: RESERVED
-    signal reg_cmd : std_logic_vector(3 downto 0);
+    signal reg_cmd : std_logic_vector(3 downto 0) := (others => '0');
 
-    signal reg_can : std_logic_vector(18 downto 0);
+    signal reg_can : std_logic_vector(18 downto 0) := (others => '0');
 
     -- registers for storing the input values
-    signal reg_a, reg_b : signed(7 downto 0);
+    signal reg_a, reg_b : signed(7 downto 0) := (others => '0');
 
     -- signal for expanding the 8 bit input values to 16 bit
-    signal a_exp, b_exp : signed(15 downto 0);
+    signal a_exp, b_exp : signed(15 downto 0) := (others => '0');
 
-    signal crc_current, crc_next, crc_out : std_logic_vector(14 downto 0);
+    signal crc_current, crc_next, crc_out : std_logic_vector(14 downto 0) := (others => '0');
     signal crc_pdata, crc_pnext : unsigned(8 downto 0) := (others => '0');
     signal crc_pend, crc_pend_next : unsigned(7 downto 0) := (others => '0');
 
     -- signal for storing the output values (signed 16 bit)
-    signal result : signed(15 downto 0);
+    signal result : signed(15 downto 0) := (others => '0');
 begin
     -- instantiate the RAM
     ram : RAMB4_S8 port map(
@@ -190,9 +191,9 @@ begin
     set_ready : process(state) is
     begin
         if (state = idle) then
-            ready <= '1';
-        else
             ready <= '0';
+        else
+            ready <= '1';
         end if;
     end process;
 

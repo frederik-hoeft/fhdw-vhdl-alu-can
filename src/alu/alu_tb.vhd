@@ -215,7 +215,7 @@ begin
                 a <= (others => '0');
                 b <= (others => '0');
                 cmd <= (others => '0');
-                reset <= (others => '0');
+                reset <= (others => '1');
             end if;
         end if;
     end process STIMULI;
@@ -287,19 +287,18 @@ begin
                     -- can
                     read(var_line, buffer_1);
                     expected_can := buffer_1;
-                    read(var_line, whitespace);
                     success := success and assert_equals(string2std_logic(expected_can), can, "can");
                 else 
                     expected_eof := true;
-                    expected_flow := (others => '-');
-                    expected_fhigh := (others => '-');
-                    expected_cout := (others => '-');
-                    expected_equal := (others => '-');
-                    expected_ov := (others => '-');
-                    expected_sign := (others => '-');
-                    expected_cb := (others => '-');
-                    expected_ready := (others => '-');
-                    expected_can := (others => '-');
+                    expected_flow := (others => 'X');
+                    expected_fhigh := (others => 'X');
+                    expected_cout := (others => 'X');
+                    expected_equal := (others => 'X');
+                    expected_ov := (others => 'X');
+                    expected_sign := (others => 'X');
+                    expected_cb := (others => 'X');
+                    expected_ready := (others => 'X');
+                    expected_can := (others => 'X');
                 end if;
             end if;
         end if;
