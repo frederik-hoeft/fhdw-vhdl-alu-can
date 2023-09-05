@@ -33,7 +33,7 @@ architecture alu_beh of alu is
         crcOut: out std_logic_vector(14 downto 0));
     end component;
 
-    type state_type is (idle, doing_crc_stuff, sending_can);
+    type state_type is (idle, crc_busy, can_busy);
 
     signal state, next_state : state_type := idle;
 
@@ -63,7 +63,7 @@ architecture alu_beh of alu is
     -- 1111: RESERVED
     signal reg_cmd : std_logic_vector(3 downto 0);
 
-    signal can_reg : std_logic_vector(18 downto 0);
+    signal reg_can : std_logic_vector(18 downto 0);
 
     -- registers for storing the input values
     signal reg_a, reg_b : signed(7 downto 0);
@@ -71,9 +71,8 @@ architecture alu_beh of alu is
     -- signal for expanding the 8 bit input values to 16 bit
     signal a_exp, b_exp : signed(15 downto 0);
 
-    signal crc_ready, can_ready : std_logic := '1';
     signal crc_current, crc_out : std_logic_vector(14 downto 0);
-    signal crc_pstart, crc_pend : unsigned(8 downto 0);
+    signal crc_pdata, crc_pnext, crc_pend : unsigned(8 downto 0);
 
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0);
@@ -97,7 +96,7 @@ begin
     -- process for storing the command and the input values
     snap_inputs : process(clk, state) is
     begin
-        if rising_edge(clk) and state = idle then
+        if rising_edge(clk) then
             reg_cmd <= cmd;
             reg_a <= signed(a);
             reg_b <= signed(b);
@@ -112,19 +111,120 @@ begin
         if (rising_edge(clk)) then
             if (reset = '1') then
                 state <= idle;
+                crc_pdata <= (others => '0');
             else
                 state <= next_state;
+                crc_pdata <= crc_pnext;
             end if;
         end if;
     end process;
-    
-    -- process for calculating the result
-    calc_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b, crc_pstart, crc_pend, crc_out) is
+
+    -- process for calculating the next state
+    transition : process(state, reg_cmd, crc_pdata, crc_pend) is
     begin
         case state is
             when idle =>
-                ram_we <= '0';
+                case reg_cmd is
+                    when "1101" =>
+                        next_state <= crc_busy;
+                    when "1110" =>
+                        next_state <= can_busy;
+                    when others =>
+                        next_state <= idle;
+                end case;
+            when crc_busy =>
+                if (crc_pdata > crc_pend) then
+                    next_state <= idle;
+                else
+                    next_state <= crc_busy;
+                end if;
+            when can_busy =>
+                -- TODO: implement CAN protocol
+                next_state <= can_busy;
+            when others =>
+                report "UNKNOWN STATE" severity error;
                 next_state <= idle;
+        end case;
+    end process transition;
+
+    crc_transition: process(state, reg_cmd, crc_pdata) is
+    begin
+        if (state = idle and reg_cmd = "1101") then
+            crc_pnext <= resize(unsigned(reg_b), 9);
+        elsif (state = crc_busy) then
+            crc_pnext <= crc_pdata + 1;
+        else
+            crc_pnext <= (others => '0');
+        end if;
+    end process;
+
+    set_crc_params : process(state, reg_cmd, crc_out, reg_b) is
+    begin
+        if (state = idle and reg_cmd = "1101") then
+            crc_current <= (others => '1'); -- reset CRC IV
+            crc_pend <= resize(unsigned(reg_b), 9);
+        elsif (state = crc_busy) then
+            crc_current <= crc_out;
+            crc_pend <= crc_pend;
+        else
+            crc_current <= (others => '0');
+            crc_pend <= (others => '0');
+        end if;
+    end process;
+
+    set_crc_busy : process(state, reg_cmd) is
+    begin
+        if (state = crc_busy or state = idle and reg_cmd = "1101") then
+            cb <= '1';
+        else
+            cb <= '0';
+        end if;
+    end process;
+
+    -- TODO: implement CAN protocol
+    set_ready : process(state) is
+    begin
+        if (state = idle) then
+            ready <= '1';
+        else
+            ready <= '0';
+        end if;
+    end process;
+
+    can <= '0'; -- TODO: implement CAN protocol
+
+    set_ram_addr: process(state, reg_cmd, reg_a, reg_b, crc_pdata) is
+    begin
+        if (state = idle) then
+            if (reg_cmd = "1100") then
+                ram_addr <= std_logic_vector("0" & reg_b);
+            elsif (reg_cmd = "1101") then
+                ram_addr <= std_logic_vector("0" & reg_a);
+            else
+                ram_addr <= (others => '0');
+            end if;
+        elsif (state = crc_busy) then
+            ram_addr <= std_logic_vector(crc_pdata + 1);
+        else
+            ram_addr <= (others => '0');
+        end if;
+    end process;
+
+    set_ram_write: process(state, reg_cmd) is
+    begin
+        if (state = idle and reg_cmd = "1100") then
+            ram_we <= '1';
+            ram_di <= std_logic_vector(reg_a);
+        else 
+            ram_we <= '0';
+            ram_di <= (others => '0');
+        end if;
+    end process;
+
+    set_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b) is
+    begin
+        case state is
+            when idle =>
                 case reg_cmd is
                     when "0000" => -- flow = a + b
                         result <= a_exp + b_exp;
@@ -150,49 +250,21 @@ begin
                         result <= a_exp nand b_exp;
                     when "1011" => -- flow = a ^ b (bitwise xor)
                         result <= a_exp xor b_exp;
-                    when "1100" => -- RAM [b] = a
-                        ram_di <= std_logic_vector(reg_a);
-                        ram_addr <= std_logic_vector("0" & reg_b);
-                        ram_we <= '1';
-                        result <= (others => '0');
-                    when "1101" => -- flow = CRC RAM [a..b]
-                        ram_addr <= std_logic_vector("0" & reg_a);
-                        crc_pstart <= resize(unsigned(reg_a), 9);
-                        crc_pend <= resize(unsigned(reg_b), 9);
-                        crc_current <= (others => '1'); -- reset CRC IV
-                        next_state <= doing_crc_stuff;
-                        result <= (others => '0');
-                    when "1110" => -- can = can_reg concat RAM [a..b] (serial)
-                        can_ready <= '0';
-                        next_state <= sending_can;
-                        result <= (others => '0');
-                    when others => -- RESERVED
-                        report "RESERVED" severity error;
+                    when others =>
                         result <= (others => '0');
                 end case;
-            when doing_crc_stuff =>
-                if (crc_pstart > crc_pend) then
-                    next_state <= idle;
-                    result <= signed(resize(unsigned(crc_out), 16));
-                else
-                    crc_pstart <= crc_pstart + 1;
-                    crc_current <= crc_out;
-                    ram_addr <= std_logic_vector(crc_pstart + 1);
-                    next_state <= doing_crc_stuff;
-                    result <= (others => '0');
-                end if;
-            when sending_can =>
-                if can_ready = '1' then
-                    next_state <= idle;
-                else
-                    next_state <= sending_can;
-                end if;
+            when crc_busy =>
+                result <= signed(resize(unsigned(crc_out), 16));
+            when can_busy =>
                 result <= (others => '0');
             when others =>
                 report "UNKNOWN STATE" severity error;
                 result <= (others => '0');
         end case;
-    end process;
+    end process set_result;
+
+    flow <= std_logic_vector(result(7 downto 0));
+    fhigh <= std_logic_vector(result(15 downto 8));
 
     -- output flag processing
     set_equal : process(a_exp, b_exp) is
@@ -232,16 +304,6 @@ begin
         else
             sign <= '0';
         end if;
-    end process;
-
-    -- process for setting the output values
-    set_outputs : process(result) is
-    begin
-        flow <= std_logic_vector(result(7 downto 0));
-        fhigh <= std_logic_vector(result(15 downto 8));
-        cb <= '0';
-        ready <= '0';
-        can <= '0';
     end process;
 
 end alu_beh;
