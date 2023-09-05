@@ -77,7 +77,7 @@ for (int i = 2; i < lines.Length; i++)
         }
 #endif
         // base delay
-        inputWriter.Write(AsDontCareLine(inputs));
+        inputWriter.Write(processedInputWords);
     }
 
     string processedExpectedWords = string.Join(' ', expected);
