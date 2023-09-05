@@ -236,17 +236,18 @@ begin
                 success := true;
                 if(not endfile(comparison_pattern)) then
                     readline(comparison_pattern, var_line);
-                    -- flow
-                    read(var_line, buffer_8);
-                    expected_flow := buffer_8;
-                    read(var_line, whitespace);
-                    success := success and assert_equals(string2std_logic(expected_flow), flow, "flow");
-
+                    
                     -- fhigh
                     read(var_line, buffer_8);
                     expected_fhigh := buffer_8;
                     read(var_line, whitespace);
                     success := success and assert_equals(string2std_logic(expected_fhigh), fhigh, "fhigh");
+                    
+                    -- flow
+                    read(var_line, buffer_8);
+                    expected_flow := buffer_8;
+                    read(var_line, whitespace);
+                    success := success and assert_equals(string2std_logic(expected_flow), flow, "flow");
 
                     -- cout
                     read(var_line, buffer_1);
