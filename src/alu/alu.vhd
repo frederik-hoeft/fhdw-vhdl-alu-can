@@ -139,7 +139,7 @@ begin
                         next_state <= idle;
                 end case;
             when crc_busy =>
-                if (crc_pdata > crc_pend) then
+                if (crc_pdata >= crc_pend) then
                     next_state <= idle;
                 else
                     next_state <= crc_busy;
@@ -153,10 +153,10 @@ begin
         end case;
     end process transition;
 
-    crc_transition: process(state, reg_cmd, crc_pdata, reg_b) is
+    crc_transition: process(state, reg_cmd, crc_pdata, reg_a) is
     begin
         if (state = idle and reg_cmd = "1101") then
-            crc_pnext <= resize(unsigned(reg_b), 9);
+            crc_pnext <= resize(unsigned(reg_a), 9);
         elsif (state = crc_busy) then
             crc_pnext <= crc_pdata + 1;
         else
