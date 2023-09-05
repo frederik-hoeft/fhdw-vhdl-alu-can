@@ -76,6 +76,9 @@ architecture alu_beh of alu is
     signal crc_pdata, crc_pnext : unsigned(8 downto 0) := (others => '0');
     signal crc_pend, crc_pend_next : unsigned(7 downto 0) := (others => '0');
 
+    signal crc_done : boolean;
+    signal crc_busy_corrected : std_logic;
+
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0) := (others => '0');
 begin
@@ -124,9 +127,11 @@ begin
             end if;
         end if;
     end process;
+    
+    crc_done <= crc_pdata >= crc_pend;
 
     -- process for calculating the next state
-    transition : process(state, reg_cmd, crc_pdata, crc_pend) is
+    transition : process(state, reg_cmd, crc_done) is
     begin
         case state is
             when idle =>
@@ -139,7 +144,7 @@ begin
                         next_state <= idle;
                 end case;
             when crc_busy =>
-                if (crc_pdata >= crc_pend) then
+                if (crc_done) then
                     next_state <= idle;
                 else
                     next_state <= crc_busy;
@@ -167,7 +172,7 @@ begin
     set_crc_params : process(state, reg_cmd, crc_out, reg_b, crc_pend, crc_current) is
     begin
         if (state = idle and reg_cmd = "1101") then
-            crc_next <= (others => '1'); -- reset CRC IV
+            crc_next <= (others => '0'); -- reset CRC IV
             crc_pend_next <= unsigned(reg_b);
         elsif (state = crc_busy) then
             crc_next <= crc_out;
@@ -178,26 +183,22 @@ begin
         end if;
     end process;
 
-    set_crc_busy : process(state, reg_cmd) is
+    set_crc_busy : process(state, reg_cmd, crc_done) is
     begin
-        if (state = crc_busy or (state = idle and reg_cmd = "1101")) then
-            cb <= '1';
+        if ((state = crc_busy and not crc_done) or (state = idle and reg_cmd = "1101")) then
+            crc_busy_corrected <= '1';
         else
-            cb <= '0';
+            crc_busy_corrected <= '0';
         end if;
     end process;
+    
+    cb <= crc_busy_corrected;
+    
+    -- TODO: implement CAN protocol (also: ready is low-active)
+    ready <= crc_busy_corrected;
 
     -- TODO: implement CAN protocol
-    set_ready : process(state, reg_cmd) is
-    begin
-        if (state = idle and reg_cmd /= "1101") then
-            ready <= '0';
-        else
-            ready <= '1';
-        end if;
-    end process;
-
-    can <= '0'; -- TODO: implement CAN protocol
+    can <= '0';
 
     set_ram_addr: process(state, reg_cmd, reg_a, reg_b, crc_pdata) is
     begin
