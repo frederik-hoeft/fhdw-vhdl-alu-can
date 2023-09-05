@@ -71,8 +71,9 @@ architecture alu_beh of alu is
     -- signal for expanding the 8 bit input values to 16 bit
     signal a_exp, b_exp : signed(15 downto 0);
 
-    signal crc_current, crc_out : std_logic_vector(14 downto 0);
-    signal crc_pdata, crc_pnext, crc_pend : unsigned(8 downto 0);
+    signal crc_current, crc_next, crc_out : std_logic_vector(14 downto 0);
+    signal crc_pdata, crc_pnext : unsigned(8 downto 0) := (others => '0');
+    signal crc_pend, crc_pend_next : unsigned(7 downto 0) := (others => '0');
 
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0);
@@ -112,9 +113,13 @@ begin
             if (reset = '1') then
                 state <= idle;
                 crc_pdata <= (others => '0');
+                crc_current <= (others => '0');
+                crc_pend <= (others => '0');
             else
                 state <= next_state;
                 crc_pdata <= crc_pnext;
+                crc_current <= crc_next;
+                crc_pend <= crc_pend_next;
             end if;
         end if;
     end process;
@@ -147,7 +152,7 @@ begin
         end case;
     end process transition;
 
-    crc_transition: process(state, reg_cmd, crc_pdata) is
+    crc_transition: process(state, reg_cmd, crc_pdata, reg_b) is
     begin
         if (state = idle and reg_cmd = "1101") then
             crc_pnext <= resize(unsigned(reg_b), 9);
@@ -158,23 +163,23 @@ begin
         end if;
     end process;
 
-    set_crc_params : process(state, reg_cmd, crc_out, reg_b) is
+    set_crc_params : process(state, reg_cmd, crc_out, reg_b, crc_pend, crc_current) is
     begin
         if (state = idle and reg_cmd = "1101") then
-            crc_current <= (others => '1'); -- reset CRC IV
-            crc_pend <= resize(unsigned(reg_b), 9);
+            crc_next <= (others => '1'); -- reset CRC IV
+            crc_pend_next <= unsigned(reg_b);
         elsif (state = crc_busy) then
-            crc_current <= crc_out;
-            crc_pend <= crc_pend;
+            crc_next <= crc_out;
+            crc_pend_next <= crc_pend;
         else
-            crc_current <= (others => '0');
-            crc_pend <= (others => '0');
+            crc_next <= crc_current;
+            crc_pend_next <= crc_pend;
         end if;
     end process;
 
     set_crc_busy : process(state, reg_cmd) is
     begin
-        if (state = crc_busy or state = idle and reg_cmd = "1101") then
+        if (state = crc_busy or (state = idle and reg_cmd = "1101")) then
             cb <= '1';
         else
             cb <= '0';
@@ -210,7 +215,7 @@ begin
         end if;
     end process;
 
-    set_ram_write: process(state, reg_cmd) is
+    set_ram_write: process(state, reg_cmd, reg_a) is
     begin
         if (state = idle and reg_cmd = "1100") then
             ram_we <= '1';
@@ -221,7 +226,7 @@ begin
         end if;
     end process;
 
-    set_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b) is
+    set_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b, crc_out) is
     begin
         case state is
             when idle =>
