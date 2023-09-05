@@ -230,7 +230,9 @@ partial record class NopFormatHandler() : IFormatHandler
         return true;
     }
 
-    public string Format(string cellValue) => cellValue;
+    public string Format(string cellValue) => cellValue.Equals("X")
+        ? "-"
+        : cellValue;
 }
 
 partial record class LutFormatHandler(int Length, IReadOnlyDictionary<string, string> LookupTable) : IFormatHandler
