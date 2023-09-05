@@ -1,0 +1,11 @@
+FORMAT:,F::prefix:8,F::prefix:8,F::lut:4->command_lut.json,,,F::prefix:8,F::prefix:8,,,,,,,
+PINS:,a,b,instruction,reset,,result_high,result_low,carry,equal,overflow,sign,crc_busy,not_ready,can_output
+reset,X,X,X,1,,0,0,0,X,0,0,0,0,0
+Mov 'A',0x41,0,mov,0,,0,0,0,0,0,0,0,0,0
+Mov 'A',0x41,1,mov,0,,0,0,0,0,0,0,0,0,0
+Mov 'A',0x41,2,mov,0,,0,0,0,0,0,0,0,0,0
+Mov 'A',0x41,3,mov,0,,0,0,0,0,0,0,0,0,0
+CRC-15,X,X,crc,0,,0,0,0,0,0,0,1,1,0
+CRC-15,X,X,X,0,,0,0,0,0,0,0,1,1,0
+CRC-15,X,X,X,0,,0,0,0,0,0,0,1,1,0
+CRC-15,X,X,X,0,,0,0,0,0,0,0,1,1,0

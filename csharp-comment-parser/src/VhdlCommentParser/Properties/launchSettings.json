@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "VhdlCommentParser": {
+      "commandName": "Project",
+      "commandLineArgs": "tb.csv"
+    }
+  }
+}
