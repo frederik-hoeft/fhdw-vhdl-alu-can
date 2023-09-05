@@ -6,12 +6,12 @@ library unisim;
 use unisim.vcomponents.all;
 
 entity alu is
-    port (clk : in std_logic);
+    port (clk : in std_logic;
     a, b : in std_logic_vector(7 downto 0);
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
     fhigh : out std_logic_vector(7 downto 0);
-    cout, equal, ov, sign, cb, ready, can : out std_logic;
+    cout, equal, ov, sign, cb, ready, can : out std_logic);
 end alu;
 
 architecture alu_beh of alu is
@@ -86,11 +86,13 @@ begin
         end if;
     end process;
 
-    a_exp <= resize(reg_a, 16);
-    b_exp <= resize(reg_b, 16);
+    -- VHDL supports automatic sign expansion? :0
+    -- or this is just broken. either way, guess we'll figure it out :P
+    a_exp <= reg_a;
+    b_exp <= reg_b;
 
     -- process for calculating the result
-    calc_result : process(reg_cmd, a_exp, b_exp, reg_a) is
+    calc_result : process(reg_cmd, a_exp, b_exp, reg_a, reg_b) is
     begin
         case reg_cmd is
             when "0000" => -- flow = a + b
@@ -98,25 +100,25 @@ begin
             when "0001" => -- flow = a - b
                 result <= a_exp - b_exp;
             when "0010" => -- flow = (a + b) * 2
-                result <= (a_exp + b_exp) sll 1; -- assuming big endian
+                result <= to_integer(to_signed(a_exp + b_exp, 16) sll 1); -- assuming big endian
             when "0011" => -- flow = (a + b) * 4
-                result <= (a_exp + b_exp) sll 2; -- assuming big endian
+                result <= to_integer(to_signed(a_exp + b_exp, 16) sll 2); -- assuming big endian
             when "0100" => -- flow = -a
                 result <= -a_exp;
             when "0101" => -- flow = a << 1
-                result <= a_exp sll 1;
+                result <= to_integer(to_signed(a_exp, 16) sll 1);
             when "0110" => -- flow = a >> 1
-                result <= a_exp srl 1;
+                result <= to_integer(to_signed(a_exp, 16) srl 1);
             when "0111" => -- flow = a <<< 1 (rotate left)
-                result <= resize(reg_a rol 1, 16);
+                result <= to_integer(to_signed(reg_a, 8) rol 1);
             when "1000" => -- flow = a >>> 1 (rotate right)
-                result <= resize(reg_a ror 1, 16);
+                result <= to_integer(to_signed(reg_a, 8) ror 1);
             when "1001" => -- flow = a * b
                 result <= a_exp * b_exp;
             when "1010" => -- flow = ~(a & b) (bitwise nand)
-                result <= not (a_exp and b_exp);
+                result <= to_integer(to_unsigned(a_exp, 16) nand to_unsigned(b_exp, 16));
             when "1011" => -- flow = a ^ b (bitwise xor)
-                result <= a_exp xor b_exp;
+                result <= to_integer(to_unsigned(a_exp, 16) xor to_unsigned(b_exp, 16));
             when "1100" => -- RAM [b] = a
                 ram_addr <= std_logic_vector(to_unsigned(reg_b, 9));
                 ram_we <= '1';
@@ -127,8 +129,8 @@ begin
             when "1110" => -- can = can_reg concat RAM [a..b] (serial)
                 result <= 0; -- TODO
             when others => -- RESERVED
-                result <= 0;
                 report "RESERVED" severity error;
+                result <= 0;
         end case;
     end process;
 
@@ -142,10 +144,10 @@ begin
         end if;
     end process;
 
-    set_cout : process(reg_cmd, result, a_exp, b_exp) is
+    set_cout : process(reg_cmd, result, reg_a, reg_b) is
     begin
         -- set carry bit for signed 8 bit addition/subtraction
-        if reg_cmd = "0000" and result > 127 or reg_cmd = "0001" and to_unsigned(reg_a) < to_unsigned(reg_b) then
+        if (reg_cmd = "0000" and result > 127) or (reg_cmd = "0001" and to_unsigned(reg_a, 8) < to_unsigned(reg_b, 8)) then
             cout <= '1';
         else
             cout <= '0';
@@ -175,8 +177,8 @@ begin
     -- process for setting the output values
     set_outputs : process(result) is
     begin
-        flow <= std_logic_vector(to_unsigned(result(7 downto 0), 8));
-        fhigh <= std_logic_vector(to_unsigned(result(15 downto 8), 8));
+        flow <= std_logic_vector(to_unsigned(result, 16)(7 downto 0));
+        fhigh <= std_logic_vector(to_unsigned(result, 16)(15 downto 8));
         cb <= '0';
         ready <= '0';
         can <= '0';
