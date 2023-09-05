@@ -6,7 +6,7 @@ library unisim;
 use unisim.vcomponents.all;
 
 entity alu is
-    port (clk : in std_logic;
+    port (clk, reset : in std_logic;
     a, b : in std_logic_vector(7 downto 0);
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
@@ -25,6 +25,17 @@ architecture alu_beh of alu is
         di : in std_logic_vector(7 downto 0); -- Data Input Bus
         do : out std_logic_vector(7 downto 0)); -- Data Output Bus
     end component;
+
+    -- generated CRC-15 module
+    component crc15 port (
+        crcIn: in std_logic_vector(14 downto 0);
+        data: in std_logic_vector(7 downto 0);
+        crcOut: out std_logic_vector(14 downto 0));
+    end component;
+
+    type state_type is (idle, doing_crc_stuff, sending_can);
+
+    signal state, next_state : state_type := idle;
 
     -- 9 bit Address Bus for RAM
     signal ram_addr : std_logic_vector(8 downto 0);
@@ -60,10 +71,11 @@ architecture alu_beh of alu is
     -- signal for expanding the 8 bit input values to 16 bit
     signal a_exp, b_exp : signed(15 downto 0);
 
+    signal crc_ready, can_ready : std_logic := '1';
+    signal crc_current, crc_out : std_logic_vector(14 downto 0);
+
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0);
-
-    signal busy : std_logic := '0';
 begin
     -- instantiate the RAM
     ram : RAMB4_S8 port map(
@@ -75,11 +87,16 @@ begin
         di => ram_di,
         do => ram_do);
     
+    -- instantiate the CRC-15 module
+    crc : crc15 port map(
+        crcIn => crc_in,
+        data => ram_do,
+        crcOut => crc_out);
+
     -- process for storing the command and the input values
-    -- basically the "state machine"
-    snap_inputs : process(clk) is
+    snap_inputs : process(clk, state) is
     begin
-        if rising_edge(clk) and busy = '0' then
+        if rising_edge(clk) and state = idle then
             reg_cmd <= cmd;
             reg_a <= signed(a);
             reg_b <= signed(b);
@@ -88,50 +105,97 @@ begin
 
     a_exp <= resize(reg_a, 16);
     b_exp <= resize(reg_b, 16);
-    
-    ram_di <= std_logic_vector(reg_a);
-    ram_addr <= std_logic_vector("0" & reg_b);
 
-    -- process for calculating the result
-    calc_result : process(reg_cmd, a_exp, b_exp, reg_a, reg_b) is
+    refresh_state : process(clk, reset) is
     begin
-        ram_we <= '0';
-        case reg_cmd is
-            when "0000" => -- flow = a + b
-                result <= a_exp + b_exp;
-            when "0001" => -- flow = a - b
-                result <= a_exp - b_exp;
-            when "0010" => -- flow = (a + b) * 2
-                result <= (a_exp + b_exp) sll 1; -- assuming big endian
-            when "0011" => -- flow = (a + b) * 4
-                result <= (a_exp + b_exp) sll 2; -- assuming big endian
-            when "0100" => -- flow = -a
-                result <= -a_exp;
-            when "0101" => -- flow = a << 1
-                result <= a_exp sll 1;
-            when "0110" => -- flow = a >> 1
-                result <= a_exp srl 1;
-            when "0111" => -- flow = a <<< 1 (rotate left)
-                result <= resize(reg_a rol 1, 16);
-            when "1000" => -- flow = a >>> 1 (rotate right)
-                result <= resize(reg_a ror 1, 16);
-            when "1001" => -- flow = a * b
-                result <= reg_a * reg_b;
-            when "1010" => -- flow = ~(a & b) (bitwise nand)
-                result <= a_exp nand b_exp;
-            when "1011" => -- flow = a ^ b (bitwise xor)
-                result <= a_exp xor b_exp;
-            when "1100" => -- RAM [b] = a
-                ram_we <= '1';
-                result <= resize(reg_a, 16);
-            when "1101" => -- flow = CRC RAM [a..b]
-                result <= (others => '0'); -- TODO
-            when "1110" => -- can = can_reg concat RAM [a..b] (serial)
-                result <= (others => '0'); -- TODO
-            when others => -- RESERVED
-                report "RESERVED" severity error;
+        if (rising_edge(clk)) then
+            if (reset = '1') then
+                state <= idle;
+            else
+                state <= next_state;
+            end if;
+        end if;
+    end process;
+    
+    -- process for calculating the result
+    calc_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b) is
+    begin
+        case state is
+            when idle =>
+                ram_we <= '0';
+                next_state <= idle;
+                case reg_cmd is
+                    when "0000" => -- flow = a + b
+                        result <= a_exp + b_exp;
+                    when "0001" => -- flow = a - b
+                        result <= a_exp - b_exp;
+                    when "0010" => -- flow = (a + b) * 2
+                        result <= (a_exp + b_exp) sll 1; -- assuming big endian
+                    when "0011" => -- flow = (a + b) * 4
+                        result <= (a_exp + b_exp) sll 2; -- assuming big endian
+                    when "0100" => -- flow = -a
+                        result <= -a_exp;
+                    when "0101" => -- flow = a << 1
+                        result <= a_exp sll 1;
+                    when "0110" => -- flow = a >> 1
+                        result <= a_exp srl 1;
+                    when "0111" => -- flow = a <<< 1 (rotate left)
+                        result <= resize(reg_a rol 1, 16);
+                    when "1000" => -- flow = a >>> 1 (rotate right)
+                        result <= resize(reg_a ror 1, 16);
+                    when "1001" => -- flow = a * b
+                        result <= reg_a * reg_b;
+                    when "1010" => -- flow = ~(a & b) (bitwise nand)
+                        result <= a_exp nand b_exp;
+                    when "1011" => -- flow = a ^ b (bitwise xor)
+                        result <= a_exp xor b_exp;
+                    when "1100" => -- RAM [b] = a
+                        ram_di <= std_logic_vector(reg_a);
+                        ram_addr <= std_logic_vector("0" & reg_b);
+                        ram_we <= '1';
+                        result <= resize(reg_a, 16);
+                    when "1101" => -- flow = CRC RAM [a..b]
+                        ram_addr <= std_logic_vector(reg_a);
+                        crc_ready <= '0';
+                        crc_current <= (others => '1'); -- reset CRC IV
+                        next_state <= doing_crc_stuff;
+                    when "1110" => -- can = can_reg concat RAM [a..b] (serial)
+                        can_ready <= '0';
+                        next_state <= sending_can;
+                    when others => -- RESERVED
+                        report "RESERVED" severity error;
+                        result <= (others => '0');
+                end case;
+            when doing_crc_stuff =>
+                if crc_ready = '1' then
+                    next_state <= idle;
+                else
+                    next_state <= doing_crc_stuff;
+                end if;
+            when sending_can =>
+                if can_ready = '1' then
+                    next_state <= idle;
+                else
+                    next_state <= sending_can;
+                end if;
+            when others =>
+                report "UNKNOWN STATE" severity error;
                 result <= (others => '0');
         end case;
+    end process;
+
+    calc_crc : process(clk, state, reg_a, reg_b) is
+    begin
+        if rising_edge(clk) and state = doing_crc_stuff then
+            if (reg_a > reg_b) then
+                crc_ready <= '1';
+                result <= resize(unsigned(crc_out), 16);
+            else
+                reg_a <= reg_a + 1;
+                crc_current <= crc_out;
+                ram_addr <= std_logic_vector(reg_a);
+            end if;
+        end if;
     end process;
 
     -- output flag processing
