@@ -89,7 +89,7 @@ begin
     
     -- instantiate the CRC-15 module
     crc : crc15 port map(
-        crcIn => crc_in,
+        crcIn => crc_current,
         data => ram_do,
         crcOut => crc_out);
 
@@ -153,9 +153,8 @@ begin
                         ram_di <= std_logic_vector(reg_a);
                         ram_addr <= std_logic_vector("0" & reg_b);
                         ram_we <= '1';
-                        result <= resize(reg_a, 16);
                     when "1101" => -- flow = CRC RAM [a..b]
-                        ram_addr <= std_logic_vector(reg_a);
+                        ram_addr <= std_logic_vector("0" & reg_a);
                         crc_ready <= '0';
                         crc_current <= (others => '1'); -- reset CRC IV
                         next_state <= doing_crc_stuff;
@@ -189,11 +188,11 @@ begin
         if rising_edge(clk) and state = doing_crc_stuff then
             if (reg_a > reg_b) then
                 crc_ready <= '1';
-                result <= resize(unsigned(crc_out), 16);
+                result <= signed(resize(unsigned(crc_out), 16));
             else
                 reg_a <= reg_a + 1;
                 crc_current <= crc_out;
-                ram_addr <= std_logic_vector(reg_a);
+                ram_addr <= std_logic_vector("0" & reg_a);
             end if;
         end if;
     end process;
