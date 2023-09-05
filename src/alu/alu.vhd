@@ -73,6 +73,7 @@ architecture alu_beh of alu is
 
     signal crc_ready, can_ready : std_logic := '1';
     signal crc_current, crc_out : std_logic_vector(14 downto 0);
+    signal crc_pstart, crc_pend : unsigned(8 downto 0);
 
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0);
@@ -118,7 +119,7 @@ begin
     end process;
     
     -- process for calculating the result
-    calc_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b) is
+    calc_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b, crc_pstart, crc_pend, crc_out) is
     begin
         case state is
             when idle =>
@@ -153,23 +154,32 @@ begin
                         ram_di <= std_logic_vector(reg_a);
                         ram_addr <= std_logic_vector("0" & reg_b);
                         ram_we <= '1';
+                        result <= (others => '0');
                     when "1101" => -- flow = CRC RAM [a..b]
                         ram_addr <= std_logic_vector("0" & reg_a);
-                        crc_ready <= '0';
+                        crc_pstart <= resize(unsigned(reg_a), 9);
+                        crc_pend <= resize(unsigned(reg_b), 9);
                         crc_current <= (others => '1'); -- reset CRC IV
                         next_state <= doing_crc_stuff;
+                        result <= (others => '0');
                     when "1110" => -- can = can_reg concat RAM [a..b] (serial)
                         can_ready <= '0';
                         next_state <= sending_can;
+                        result <= (others => '0');
                     when others => -- RESERVED
                         report "RESERVED" severity error;
                         result <= (others => '0');
                 end case;
             when doing_crc_stuff =>
-                if crc_ready = '1' then
+                if (crc_pstart > crc_pend) then
                     next_state <= idle;
+                    result <= signed(resize(unsigned(crc_out), 16));
                 else
+                    crc_pstart <= crc_pstart + 1;
+                    crc_current <= crc_out;
+                    ram_addr <= std_logic_vector(crc_pstart + 1);
                     next_state <= doing_crc_stuff;
+                    result <= (others => '0');
                 end if;
             when sending_can =>
                 if can_ready = '1' then
@@ -177,24 +187,11 @@ begin
                 else
                     next_state <= sending_can;
                 end if;
+                result <= (others => '0');
             when others =>
                 report "UNKNOWN STATE" severity error;
                 result <= (others => '0');
         end case;
-    end process;
-
-    calc_crc : process(clk, state, reg_a, reg_b) is
-    begin
-        if rising_edge(clk) and state = doing_crc_stuff then
-            if (reg_a > reg_b) then
-                crc_ready <= '1';
-                result <= signed(resize(unsigned(crc_out), 16));
-            else
-                reg_a <= reg_a + 1;
-                crc_current <= crc_out;
-                ram_addr <= std_logic_vector("0" & reg_a);
-            end if;
-        end if;
     end process;
 
     -- output flag processing
