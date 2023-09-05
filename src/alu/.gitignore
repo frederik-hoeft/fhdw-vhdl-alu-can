@@ -150,6 +150,7 @@ alu_tb_stx_beh.prj
 *.sdf
 *.pcs
 *.xdl
+*.wcfg
 
 # custom dirs
 xlnx_auto_0_xdb/

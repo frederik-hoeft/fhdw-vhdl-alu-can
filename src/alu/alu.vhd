@@ -188,9 +188,9 @@ begin
     end process;
 
     -- TODO: implement CAN protocol
-    set_ready : process(state) is
+    set_ready : process(state, reg_cmd) is
     begin
-        if (state = idle) then
+        if (state = idle and reg_cmd /= "1101") then
             ready <= '0';
         else
             ready <= '1';
