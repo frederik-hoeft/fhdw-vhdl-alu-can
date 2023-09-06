@@ -17,7 +17,7 @@ architecture test_bench of alu_tb is
         a, b : in std_logic_vector(7 downto 0);
         cmd : in std_logic_vector(3 downto 0);
         flow, fhigh : out std_logic_vector(7 downto 0);
-        cout, equal, ov, sign, cb, ready, can : out std_logic);
+        cout, equal, ov, sign, cb, ready, can, can_busy : out std_logic);
     end component;
 
     -- inputs
@@ -34,7 +34,7 @@ architecture test_bench of alu_tb is
     -- outputs
     signal flow : std_logic_vector(7 downto 0);
     signal fhigh : std_logic_vector(7 downto 0);
-    signal cout, equal, ov, sign, cb, ready, can : std_logic_vector(0 downto 0);
+    signal cout, equal, ov, sign, cb, ready, can, can_busy : std_logic_vector(0 downto 0);
 
     -- simulation
     signal DebugVariable : boolean:=true;
@@ -49,6 +49,7 @@ architecture test_bench of alu_tb is
     shared variable expected_sign : string(1 downto 1);
     shared variable expected_cb : string(1 downto 1);
     shared variable expected_ready : string(1 downto 1);
+    shared variable expected_can_busy : string(1 downto 1);
     shared variable expected_can : string(1 downto 1);
 
     -- (monitoring) line status
@@ -167,7 +168,8 @@ begin
         sign => sign(0),
         cb => cb(0),
         ready => ready(0),
-        can => can(0)
+        can => can(0),
+        can_busy => can_busy(0)
     );
 
     -- delayed inputs (to allow for consistent logging)
@@ -285,6 +287,12 @@ begin
                     read(var_line, whitespace);
                     success := success and assert_equals(string2std_logic(expected_ready), ready, "ready");
 
+                    -- can busy
+                    read(var_line, buffer_1);
+                    expected_can_busy := buffer_1;
+                    read(var_line, whitespace);
+                    success := success and assert_equals(string2std_logic(expected_can), can, "can_busy");
+                    
                     -- can
                     read(var_line, buffer_1);
                     expected_can := buffer_1;
@@ -299,6 +307,7 @@ begin
                     expected_sign := (others => 'X');
                     expected_cb := (others => 'X');
                     expected_ready := (others => 'X');
+                    expected_can_busy := (others => 'X');
                     expected_can := (others => 'X');
                 end if;
             end if;
@@ -322,6 +331,7 @@ begin
         variable v_sign: string(1 downto 1);
         variable v_cb: string(1 downto 1);
         variable v_ready: string(1 downto 1);
+        variable v_can_busy: string(1 downto 1);
         variable v_can: string(1 downto 1);
         variable v_status: string(7 downto 1);
         variable simulation_time: time;
@@ -332,7 +342,7 @@ begin
             is_first_monitor_call <= false;
             write(var_line, "<STATUS> at <TIME> (@");
             write(var_line, clock_period);
-            write(var_line, "),,a,b,cmd,reset,,flow(exp:act),fhigh(exp:act),cout(exp:act),equal(exp:act),ov(exp:act),sign(exp:act),cb(exp:act),ready(exp:act),can(exp:act)");
+            write(var_line, "),,a,b,cmd,reset,,flow(exp:act),fhigh(exp:act),cout(exp:act),equal(exp:act),ov(exp:act),sign(exp:act),cb(exp:act),ready(exp:act),can_busy(exp:act),can(exp:act)");
             writeline(protocol, var_line);
         end if;
         -- only log after first two clock cycles (one to allow for device to initialize
@@ -352,6 +362,7 @@ begin
                 v_sign := std_logic2string(sign);
                 v_cb := std_logic2string(cb);
                 v_ready := std_logic2string(ready);
+                v_can_busy := std_logic2string(can_busy);
                 v_can := std_logic2string(can);
                 if (success) then
                     v_status := "SUCCESS";
@@ -387,6 +398,8 @@ begin
                 write(var_line, expected_cb & ":" & v_cb);
                 write(var_line, separator);
                 write(var_line, expected_ready & ":" & v_ready);
+                write(var_line, separator);
+                write(var_line, expected_can_busy & ":" & v_can_busy);
                 write(var_line, separator);
                 write(var_line, expected_can & ":" & v_can);
                 writeline(protocol, var_line);

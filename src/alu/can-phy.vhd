@@ -131,7 +131,7 @@ begin
             when tx_ifs_0 =>
                 next_state <= idle;
             when others =>
-                report "Invalid state" severity error;
+                report "CAN PHY: transition from invalid state" severity error;
                 next_state <= idle;
         end case;
     end process transition;
@@ -244,8 +244,6 @@ begin
     set_can_out_pre_stuffing : process(state, tx_buffer, tx_bit_counter, tx_crc_buffer, tx_crc_bit_counter)
     begin
         case state is
-            when idle =>
-                can_out_pre_stuffing <= '1';
             when tx_data =>
                 can_out_pre_stuffing <= tx_buffer(tx_bit_counter);
             when tx_crc =>
@@ -261,7 +259,6 @@ begin
             when tx_ifs_2 | tx_ifs_1 | tx_ifs_0 =>
                 can_out_pre_stuffing <= '1';
             when others =>
-                report "Invalid state" severity error;
                 can_out_pre_stuffing <= '1';
         end case;
     end process set_can_out_pre_stuffing;

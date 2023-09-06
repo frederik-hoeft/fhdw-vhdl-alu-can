@@ -212,7 +212,7 @@ begin
                     next_state <= idle;
                 end if;
             when others =>
-                report "UNKNOWN STATE" severity error;
+                report "ALU transition: UNKNOWN STATE" severity error;
                 next_state <= idle;
         end case;
     end process transition;
@@ -411,7 +411,7 @@ begin
             when can_buffering =>
                 result <= (others => '0');
             when others =>
-                report "UNKNOWN STATE" severity error;
+                report "ALU result setter: UNKNOWN STATE" severity error;
                 result <= (others => '0');
         end case;
     end process set_result;
