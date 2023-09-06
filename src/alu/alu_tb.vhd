@@ -291,7 +291,7 @@ begin
                     read(var_line, buffer_1);
                     expected_can_busy := buffer_1;
                     read(var_line, whitespace);
-                    success := success and assert_equals(string2std_logic(expected_can), can, "can_busy");
+                    success := success and assert_equals(string2std_logic(expected_can_busy), can_busy, "can_busy");
                     
                     -- can
                     read(var_line, buffer_1);

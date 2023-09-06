@@ -28,9 +28,9 @@ architecture behavioral of can_phy is
 
     -- 83 bit tx buffer:
     -- 19 bits header
-    -- 64 bits data
+    -- up to 64 bits data
     -- (15 bits tx_crc stored separately)
-    -- spacing etc via state machine
+    -- ACK, IFS, etc via state machine
     signal tx_buffer : std_logic_vector(82 downto 0);
     signal tx_buffer_next : std_logic_vector(82 downto 0);
     signal tx_buffer_ptr : integer range 0 to 82 := 0;

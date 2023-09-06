@@ -74,7 +74,7 @@ architecture alu_beh of alu is
     signal reg_cmd : std_logic_vector(3 downto 0) := (others => '0');
 
     signal reg_can_dlc, reg_can_dlc_next : std_logic_vector(3 downto 0) := (others => '0');
-    constant CAN_HEADER_NO_DLC : std_logic_vector(14 downto 0) := "000000010100000";
+    constant CAN_HEADER_NO_DLC : std_logic_vector(14 downto 0) := "010011000111000";--"000000010100000";
     
     signal reg_can : std_logic_vector(18 downto 0);
 
@@ -264,17 +264,15 @@ begin
         end if;
     end process;
 
-    set_can_header_pointer : process(state, can_header_pointer)
+    set_can_header_pointer : process(state, reg_cmd, can_header_pointer)
     begin
         -- the can header is 19 bits long, and we buffer in words of 8 bits
         -- so we need to buffer 3 words and then start the CRC calculation
-        if (state = can_buffering) then
-            if (can_header_pointer = 0) then
-                -- the first word only contains 19 % 8 = 3 bits of the header
-                can_header_pointer_next <= 3;
-            else
-                can_header_pointer_next <= can_header_pointer + 8;
-            end if;
+        if (state = idle and reg_cmd = "1110") then
+            -- the first word only contains 19 % 8 = 3 bits of the header
+            can_header_pointer_next <= 3;
+        elsif (state = can_buffering) then
+            can_header_pointer_next <= can_header_pointer + 8;
         else
             can_header_pointer_next <= 0;
         end if;
@@ -319,9 +317,9 @@ begin
 
     set_reg_can_dlc : process(state, can_header_pointer, crc_pdata, crc_pend, reg_can_dlc)
     begin
-        if (state = can_buffering and can_header_pointer = 0) then
+        if (state = can_buffering and can_header_pointer = 3) then
             -- write the data length code to the CAN header
-            reg_can_dlc_next <= std_logic_vector(resize(unsigned(crc_pend - crc_pdata), 4));
+            reg_can_dlc_next <= std_logic_vector(resize(unsigned(crc_pend - crc_pdata + 1), 4));
         else
             reg_can_dlc_next <= reg_can_dlc;
         end if;
