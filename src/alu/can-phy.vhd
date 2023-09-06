@@ -283,7 +283,7 @@ begin
 
     set_busy : process(state)
     begin
-        if (state = idle) then
+        if (state = idle or state = tx_ifs_0) then
             busy <= '0';
         else
             busy <= '1';
