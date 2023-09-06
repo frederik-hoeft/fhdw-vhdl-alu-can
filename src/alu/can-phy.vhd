@@ -184,7 +184,7 @@ begin
     end process set_next_tx_buffer;
 
     -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
-    set_stuffing_params : process(state, stuffing_counter, stuffing_bit, tx_bit_counter, can_out_pre_stuffing)
+    set_stuffing_params : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing)
     begin
         if (state = tx_data or state = tx_crc) then
             if (stuffing_bit = can_out_pre_stuffing and stuffing_counter < 4) then
@@ -245,9 +245,9 @@ begin
     begin
         case state is
             when tx_data =>
-                can_out_pre_stuffing <= tx_buffer(tx_bit_counter);
+                can_out_pre_stuffing <= tx_buffer(82 - tx_bit_counter);
             when tx_crc =>
-                can_out_pre_stuffing <= tx_crc_buffer(tx_crc_bit_counter);
+                can_out_pre_stuffing <= tx_crc_buffer(14 - tx_crc_bit_counter);
             when tx_crc_delimiter =>
                 can_out_pre_stuffing <= '1';
             when tx_ack =>

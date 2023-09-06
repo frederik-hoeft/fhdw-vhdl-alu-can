@@ -74,7 +74,7 @@ architecture alu_beh of alu is
     signal reg_cmd : std_logic_vector(3 downto 0) := (others => '0');
 
     signal reg_can_dlc, reg_can_dlc_next : std_logic_vector(3 downto 0) := (others => '0');
-    constant CAN_HEADER_NO_DLC : std_logic_vector(14 downto 0) := "010011000111000";--"000000010100000";
+    constant CAN_HEADER_NO_DLC : std_logic_vector(14 downto 0) := "000000010100000";
     
     signal reg_can : std_logic_vector(18 downto 0);
 
@@ -284,8 +284,8 @@ begin
             can_buffer_strobe <= '1'; -- start buffering (next cycle will start pushing data to the CAN PHY)
         elsif (state = can_buffering) then
             can_buffer_strobe <= '1'; -- we are currently buffering the CAN header
-        elsif (state = can_crc_busy and not crc_done) then
-            can_buffer_strobe <= '1'; -- we are currently buffering the CAN data and the CRC is not done yet
+        elsif (state = can_crc_busy) then
+            can_buffer_strobe <= '1'; -- we are currently buffering the CAN data
         else
             can_buffer_strobe <= '0';
         end if;
