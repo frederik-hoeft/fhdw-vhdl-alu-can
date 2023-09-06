@@ -93,7 +93,7 @@ begin
                     next_state <= tx_data;
                 end if;
             when tx_data =>
-                if (tx_bit_counter = 82 or tx_bit_counter = tx_buffer_ptr) then
+                if (tx_bit_counter = 82 or tx_bit_counter = tx_buffer_ptr - 1) then
                     next_state <= tx_crc;
                 else
                     next_state <= tx_data;
