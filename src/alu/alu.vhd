@@ -192,7 +192,7 @@ begin
                     next_state <= crc_busy;
                 end if;
             when can_buffering =>
-                if (can_header_pointer = CAN_HEADER_LENGTH) then
+                if (can_header_pointer >= CAN_HEADER_LENGTH - 8) then
                     next_state <= can_crc_busy;
                 else
                     next_state <= can_buffering;
@@ -300,6 +300,7 @@ begin
         end if;
     end process;
 
+    -- it's a Mealy FSM, so everything is faster by 1 cycle
     set_can_parallel_in : process(state, can_header_pointer, reg_cmd, reg_can, ram_do)
     begin
         if (state = idle and reg_cmd = "1110") then
@@ -344,7 +345,7 @@ begin
 
     can_busy <= can_busy_out;
 
-    set_ram_addr: process(state, reg_cmd, reg_a, reg_b, crc_pdata)
+    set_ram_addr: process(state, next_state, reg_cmd, reg_a, reg_b, crc_pdata)
     begin
         if (state = idle or state = can_transmitting) then
             if (reg_cmd = "1100") then
@@ -354,7 +355,9 @@ begin
             else
                 ram_addr <= (others => '0');
             end if;
-        elsif (state = crc_busy or state = can_crc_busy) then
+        elsif (state = can_buffering) then
+            ram_addr <= std_logic_vector(crc_pdata);
+        elsif (state = crc_busy or next_state = can_crc_busy) then
             ram_addr <= std_logic_vector(crc_pdata + 1);
         else
             ram_addr <= (others => '0');
