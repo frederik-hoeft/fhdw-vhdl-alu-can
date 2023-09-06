@@ -174,10 +174,10 @@ begin
         if (buffer_strobe = '1') then
             if (tx_buffer_ptr = 0) then
                 -- first word, only 3 bits of data
-                tx_buffer_tmp(2 downto 0) := parallel_in(2 downto 0);
+                tx_buffer_tmp(82 downto 80) := parallel_in(2 downto 0);
             else
                 -- after the first word, write the full 8 bits
-                tx_buffer_tmp(tx_buffer_ptr + 7 downto tx_buffer_ptr) := parallel_in;
+                tx_buffer_tmp(82 - tx_buffer_ptr downto 82 - tx_buffer_ptr - 7) := parallel_in;
             end if;
         end if;
         tx_buffer_next <= tx_buffer_tmp;
