@@ -1,3 +1,4 @@
 vhdl work "crc15.vhd"
+vhdl work "can-phy.vhd"
 vhdl work "alu.vhd"
 vhdl work "alu_tb.vhd"

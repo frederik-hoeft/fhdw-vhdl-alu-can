@@ -11,12 +11,7 @@ entity can_phy is port(
 end can_phy;
 
 architecture behavioral of can_phy is
-    -- 83 bit tx buffer:
-    -- 19 bits header
-    -- 64 bits data
-    -- (15 bits tx_crc stored separately)
-    -- spacing etc via state machine
-    type buffer_83 is std_logic_vector(82 downto 0);
+    
     type state_type is (
         idle,
         buffering, 
@@ -31,15 +26,20 @@ architecture behavioral of can_phy is
     signal can_out : std_logic;
     signal can_out_pre_stuffing : std_logic;
 
-    signal tx_buffer : buffer_83;
-    signal tx_buffer_next : buffer_83;
+    -- 83 bit tx buffer:
+    -- 19 bits header
+    -- 64 bits data
+    -- (15 bits tx_crc stored separately)
+    -- spacing etc via state machine
+    signal tx_buffer : std_logic_vector(82 downto 0);
+    signal tx_buffer_next : std_logic_vector(82 downto 0);
     signal tx_buffer_ptr : integer range 0 to 82 := 0;
     signal tx_buffer_ptr_next : integer range 0 to 82 := 0;
 
     signal tx_bit_counter : integer range 0 to 82 := 0;
     signal tx_bit_counter_next : integer range 0 to 82 := 0;
 
-    signal tx_crc, tx_crc_next : std_logic_vector(14 downto 0);
+    signal tx_crc_buffer, tx_crc_buffer_next : std_logic_vector(14 downto 0);
     signal tx_crc_bit_counter : integer range 0 to 14 := 0;
     signal tx_crc_bit_counter_next : integer range 0 to 14 := 0;
 
@@ -57,7 +57,7 @@ begin
         if (rising_edge(clk)) then
             if (reset = '1') then
                 state <= idle;
-                tx_crc <= (others => '0');
+                tx_crc_buffer <= (others => '0');
                 tx_buffer <= (others => '0');
                 tx_buffer_ptr <= 0;
                 tx_bit_counter <= 0;
@@ -66,7 +66,7 @@ begin
                 stuffing_bit <= '0';
             else
                 state <= next_state;
-                tx_crc <= tx_crc_next;
+                tx_crc_buffer <= tx_crc_buffer_next;
                 tx_buffer <= tx_buffer_next;
                 tx_buffer_ptr <= tx_buffer_ptr_next;
                 tx_bit_counter <= tx_bit_counter_next;
@@ -77,12 +77,14 @@ begin
         end if;
     end process refresh_state;
 
-    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_counter)
+    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_counter, tx_crc_bit_counter)
     begin
         case state is
             when idle =>
                 if (buffer_strobe = '1') then
                     next_state <= buffering;
+                else
+                    next_state <= idle;
                 end if;
             when buffering =>
                 if (buffer_strobe = '1') then
@@ -134,14 +136,14 @@ begin
         end case;
     end process transition;
 
-    set_next_crc : process(state, crc_in, crc_strobe, tx_crc)
+    set_next_crc : process(state, crc_in, crc_strobe, tx_crc_buffer)
     begin
         if (state = idle) then
-            tx_crc_next <= (others => '0');
+            tx_crc_buffer_next <= (others => '0');
         elsif (crc_strobe = '1') then
-            tx_crc_next <= crc_in;
+            tx_crc_buffer_next <= crc_in;
         else
-            tx_crc_next <= tx_crc;
+            tx_crc_buffer_next <= tx_crc_buffer;
         end if;
     end process set_next_crc;
 
@@ -166,19 +168,19 @@ begin
 
     -- update the buffer and write new data
     set_next_tx_buffer : process(state, tx_buffer, tx_buffer_ptr, parallel_in, buffer_strobe)
+        variable tx_buffer_tmp : std_logic_vector(82 downto 0);
     begin
+        tx_buffer_tmp := tx_buffer;
         if (buffer_strobe = '1') then
             if (tx_buffer_ptr = 0) then
                 -- first word, only 3 bits of data
-                tx_buffer_next <= tx_buffer(82 downto 3) & parallel_in(2 downto 0);
+                tx_buffer_tmp(2 downto 0) := parallel_in(2 downto 0);
             else
                 -- after the first word, write the full 8 bits
-                tx_buffer_next <= tx_buffer(82 downto tx_buffer_ptr + 8) & parallel_in & tx_buffer(tx_buffer_ptr - 1 downto 0);
+                tx_buffer_tmp(tx_buffer_ptr + 7 downto tx_buffer_ptr) := parallel_in;
             end if;
-        else
-            -- if the buffer strobe is not active, hold the current value
-            tx_buffer_next <= tx_buffer;
         end if;
+        tx_buffer_next <= tx_buffer_tmp;
     end process set_next_tx_buffer;
 
     -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
@@ -192,6 +194,9 @@ begin
                 stuffing_counter_next <= 0;
                 stuffing_bit_next <= not stuffing_bit;
             end if;
+        else
+            stuffing_counter_next <= 0;
+            stuffing_bit_next <= '1';
         end if;
     end process set_stuffing_params;
 
@@ -236,15 +241,15 @@ begin
     end process set_next_tx_crc_bit_counter;
 
     -- determine the next thing to transmit, independent of bit stuffing
-    set_can_out_pre_stuffing : process(state, tx_buffer, tx_bit_counter, tx_crc, tx_crc_bit_counter)
+    set_can_out_pre_stuffing : process(state, tx_buffer, tx_bit_counter, tx_crc_buffer, tx_crc_bit_counter)
     begin
-        case state
+        case state is
             when idle =>
                 can_out_pre_stuffing <= '1';
             when tx_data =>
-                tx_buffer(tx_bit_counter)
+                can_out_pre_stuffing <= tx_buffer(tx_bit_counter);
             when tx_crc =>
-                can_out_pre_stuffing <= tx_crc(tx_crc_bit_counter);
+                can_out_pre_stuffing <= tx_crc_buffer(tx_crc_bit_counter);
             when tx_crc_delimiter =>
                 can_out_pre_stuffing <= '1';
             when tx_ack =>
@@ -262,7 +267,7 @@ begin
     end process set_can_out_pre_stuffing;
 
     -- determine the next thing to transmit, including bit stuffing
-    apply_stuffing : process(state, stuffing_counter, stuffing_bit)
+    apply_stuffing : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing)
     begin 
         if ((state = tx_data or state = tx_crc) and stuffing_counter = 4) then
             -- the stuffing bit is the thing that we are counting
