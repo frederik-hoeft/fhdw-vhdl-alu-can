@@ -5,13 +5,13 @@ use ieee.numeric_std.all;
 library unisim;
 use unisim.vcomponents.all;
 
-entity alu is
-    port (clk, reset : in std_logic;
+entity alu is port (
+    clk, reset : in std_logic;
     a, b : in std_logic_vector(7 downto 0);
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
     fhigh : out std_logic_vector(7 downto 0);
-    cout, equal, ov, sign, cb, ready, can : out std_logic);
+    cout, equal, ov, sign, cb, ready, can, can_busy : out std_logic);
 end alu;
 
 architecture alu_beh of alu is
@@ -33,7 +33,16 @@ architecture alu_beh of alu is
         crcOut: out std_logic_vector(14 downto 0));
     end component;
 
-    type state_type is (idle, crc_busy, can_busy);
+    -- CAN PHY module / CAN controller
+    component can_phy is port(
+        clk, buffer_strobe, crc_strobe, reset : in std_logic;
+        crc_in : in std_logic_vector(14 downto 0);
+        parallel_in : in std_logic_vector(7 downto 0);
+        serial_out : out std_logic;
+        busy : out std_logic);
+    end component;
+
+    type state_type is (idle, crc_busy, can_buffering, can_crc_busy, can_transmitting);
 
     signal state : state_type := idle;
     signal next_state : state_type := idle;
@@ -64,7 +73,7 @@ architecture alu_beh of alu is
     -- 1111: RESERVED
     signal reg_cmd : std_logic_vector(3 downto 0) := (others => '0');
 
-    signal reg_can : std_logic_vector(18 downto 0) := (others => '0');
+    signal reg_can, reg_can_next : std_logic_vector(18 downto 0) := (others => '0');
 
     -- registers for storing the input values
     signal reg_a, reg_b : signed(7 downto 0) := (others => '0');
@@ -78,6 +87,16 @@ architecture alu_beh of alu is
 
     signal crc_done : boolean;
     signal crc_busy_corrected : std_logic;
+
+    -- how many words of the CAN header have been buffered so far
+    signal can_header_pointer : integer range 0 to 19 := 0;
+    signal can_header_pointer_next : integer range 0 to 19 := 0;
+    constant CAN_HEADER_LENGTH : integer := 19;
+    -- CAN we start another CAN transmission? (pun intended)
+    signal can_busy_out : std_logic := '0';
+    signal can_parallel_in : std_logic_vector(7 downto 0) := (others => '0');
+    signal can_buffer_strobe : std_logic := '0';
+    signal can_crc_strobe : std_logic := '0';
 
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0) := (others => '0');
@@ -97,6 +116,17 @@ begin
         crcIn => crc_current,
         data => ram_do,
         crcOut => crc_out);
+
+    -- instantiate the CAN PHY module
+    can_controller : can_phy port map(
+        clk => clk,
+        buffer_strobe => can_buffer_strobe,
+        crc_strobe => can_crc_strobe,
+        reset => reset,
+        crc_in => crc_out,
+        parallel_in => can_parallel_in,
+        serial_out => can,
+        busy => can_busy_out);
 
     -- process for storing the command and the input values
     snap_inputs : process(clk, state) is
@@ -119,11 +149,16 @@ begin
                 crc_pdata <= (others => '0');
                 crc_current <= (others => '0');
                 crc_pend <= (others => '0');
+                can_header_pointer <= 0;
+                -- reset the CAN header register to dummy header from Wikipedia
+                reg_can <= "0000000101000000000";
             else
                 state <= next_state;
                 crc_pdata <= crc_pnext;
                 crc_current <= crc_next;
                 crc_pend <= crc_pend_next;
+                can_header_pointer <= can_header_pointer_next;
+                reg_can <= reg_can_next;
             end if;
         end if;
     end process;
@@ -131,7 +166,7 @@ begin
     crc_done <= crc_pdata >= crc_pend;
 
     -- process for calculating the next state
-    transition : process(state, reg_cmd, crc_done) is
+    transition : process(state, reg_cmd, crc_done, can_busy_out) is
     begin
         case state is
             when idle =>
@@ -139,19 +174,40 @@ begin
                     when "1101" =>
                         next_state <= crc_busy;
                     when "1110" =>
-                        next_state <= can_busy;
+                        next_state <= can_buffering;
                     when others =>
                         next_state <= idle;
                 end case;
             when crc_busy =>
                 if (crc_done) then
-                    next_state <= idle;
+                    if (can_busy_out = '1') then
+                        next_state <= can_transmitting;
+                    else
+                        next_state <= idle;
+                    end if;
                 else
                     next_state <= crc_busy;
                 end if;
-            when can_busy =>
-                -- TODO: implement CAN protocol
-                next_state <= can_busy;
+            when can_buffering =>
+                if (can_header_pointer = CAN_HEADER_LENGTH) then
+                    next_state <= can_crc_busy;
+                else
+                    next_state <= can_buffering;
+                end if;
+            when can_crc_busy =>
+                if (crc_done) then
+                    next_state <= can_transmitting;
+                else
+                    next_state <= can_crc_busy;
+                end if;
+            when can_transmitting =>
+                if (reg_cmd = "1101") then
+                    next_state <= crc_busy;
+                elsif (can_busy_out = '1') then
+                    next_state <= can_transmitting;
+                else
+                    next_state <= idle;
+                end if;
             when others =>
                 report "UNKNOWN STATE" severity error;
                 next_state <= idle;
@@ -160,49 +216,131 @@ begin
 
     crc_transition: process(state, reg_cmd, crc_pdata, reg_a) is
     begin
-        if (state = idle and reg_cmd = "1101") then
+        if ((state = idle or state = can_transmitting) and reg_cmd = "1101") then
+            -- snap CRC start and end address
+            -- initialize CRC
             crc_pnext <= resize(unsigned(reg_a), 9);
-        elsif (state = crc_busy) then
-            crc_pnext <= crc_pdata + 1;
-        else
-            crc_pnext <= (others => '0');
-        end if;
-    end process;
-
-    set_crc_params : process(state, reg_cmd, crc_out, reg_b, crc_pend, crc_current) is
-    begin
-        if (state = idle and reg_cmd = "1101") then
-            crc_next <= (others => '0'); -- reset CRC IV
             crc_pend_next <= unsigned(reg_b);
-        elsif (state = crc_busy) then
+            crc_next <= (others => '0'); -- reset CRC IV
+        elsif (state = idle and reg_cmd = "1110") then
+            -- snap CRC start and end address, capping at 7 bytes
+            crc_pnext <= resize(unsigned(reg_a), 9);
+            if (reg_b - reg_a > 7) then
+                crc_pend_next <= unsigned(reg_a) + 7;
+            else
+                crc_pend_next <= unsigned(reg_b);
+            end if;
+            -- initialize CRC
+            crc_next <= (others => '0'); -- reset CRC IV
+        elsif (state = crc_busy or state = can_crc_busy) then
+            -- increment CRC address, update CRC, and keep end address
+            crc_pnext <= crc_pdata + 1;
             crc_next <= crc_out;
             crc_pend_next <= crc_pend;
-        else
-            crc_next <= crc_current;
+        elsif (state = can_buffering) then
+            -- wait for the CAN header to be buffered, hold addresses, and initialize CRC
+            crc_pnext <= crc_pdata;
             crc_pend_next <= crc_pend;
+            crc_next <= (others => '0'); -- reset CRC IV
+        else
+            -- reset CRC
+            crc_pnext <= (others => '0');
+            crc_next <= (others => '0');
+            crc_pend_next <= (others => '0');
         end if;
     end process;
 
     set_crc_busy : process(state, reg_cmd, crc_done) is
     begin
-        if ((state = crc_busy and not crc_done) or (state = idle and reg_cmd = "1101")) then
+        if (((state = crc_busy or state = can_crc_busy) and not crc_done) -- calculating CRC right now and not done by the end of the cycle
+            or ((state = idle or state = can_transmitting) and reg_cmd = "1101") -- CRC calculation requested by user, starting next cycle
+            or (state = can_buffering and can_header_pointer = CAN_HEADER_LENGTH)) then -- CRC calculation requested by CAN, starting next cycle
             crc_busy_corrected <= '1';
         else
             crc_busy_corrected <= '0';
         end if;
     end process;
-    
+
+    set_can_header_pointer : process(state, can_header_pointer) is
+    begin
+        -- the can header is 19 bits long, and we buffer in words of 8 bits
+        -- so we need to buffer 3 words and then start the CRC calculation
+        if (state = can_buffering) then
+            if (can_header_pointer = 0) then
+                -- the first word only contains 19 % 8 = 3 bits of the header
+                can_header_pointer_next <= 3;
+            else
+                can_header_pointer_next <= can_header_pointer + 8;
+            end if;
+        else
+            can_header_pointer_next <= 0;
+        end if;
+    end process;
+
+    set_can_buffer_strobe : process(state, reg_cmd, crc_done) is
+    begin
+        if (state = idle and reg_cmd = "1110") then
+            can_buffer_strobe <= '1'; -- start buffering (next cycle will start pushing data to the CAN PHY)
+        elsif (state = can_buffering) then
+            can_buffer_strobe <= '1'; -- we are currently buffering the CAN header
+        elsif (state = can_crc_busy and not crc_done) then
+            can_buffer_strobe <= '1'; -- we are currently buffering the CAN data and the CRC is not done yet
+        else
+            can_buffer_strobe <= '0';
+        end if;
+    end process;
+
+    set_can_crc_strobe : process(state, crc_done) is
+    begin
+        if (state = can_crc_busy and crc_done) then
+            can_crc_strobe <= '1'; -- read the CRC result with the next clock cycle (CRC will be ready by then)
+        else
+            can_crc_strobe <= '0';
+        end if;
+    end process;
+
+    set_can_parallel_in : process(state, can_header_pointer, ram_do) is
+    begin
+        if (state = idle and reg_cmd = "1110") then
+            -- start buffering the CAN header
+            -- the first word only contains 19 % 8 = 3 bits of the header
+            can_parallel_in <= "00000" & can_reg(18 downto 15);
+        elsif (state = can_buffering and can_header_pointer < CAN_HEADER_LENGTH) then
+            -- buffer the rest of the CAN header
+            can_parallel_in <= can_reg(18 - can_header_pointer - 1 downto 18 - can_header_pointer - 8 - 1);
+        else
+            -- otherwise, buffer the data from the RAM
+            can_parallel_in <= ram_do;
+        end if;
+    end process;
+
+    set_can_reg : process(state, can_header_pointer, ram_do, crc_pdata, crc_pend) is
+    begin
+        if (state = can_buffering and can_header_pointer = 0) then
+            -- write the data length code to the CAN header
+            reg_can_next <= reg_can(18 downto 4) & "0" & std_logic_vector(resize(unsigned(crc_pend - crc_pdata), 3));
+        elsif (state = can_buffering and can_header_pointer = 8) then
+
     cb <= crc_busy_corrected;
     
-    -- TODO: implement CAN protocol (also: ready is low-active)
-    ready <= crc_busy_corrected;
+    -- ready is low-active (i.e. ready = '0' means ready)
+    set_ready : process(state, reg_cmd, crc_busy_corrected) is
+    begin
+        if (state = idle and reg_cmd = "1110") then
+            ready <= '1'; -- we are starting a CAN transmission
+        elsif (state = can_buffering)
+            ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
+        else
+            -- whether we are ready or not depends on whether the CRC is busy
+            ready <= crc_busy_corrected;
+        end if;
+    end process;
 
-    -- TODO: implement CAN protocol
-    can <= '0';
+    can_busy <= can_busy_out;
 
     set_ram_addr: process(state, reg_cmd, reg_a, reg_b, crc_pdata) is
     begin
-        if (state = idle) then
+        if (state = idle or state = can_transmitting) then
             if (reg_cmd = "1100") then
                 ram_addr <= std_logic_vector("0" & reg_b);
             elsif (reg_cmd = "1101") then
@@ -210,7 +348,7 @@ begin
             else
                 ram_addr <= (others => '0');
             end if;
-        elsif (state = crc_busy) then
+        elsif (state = crc_busy or state = can_crc_busy) then
             ram_addr <= std_logic_vector(crc_pdata + 1);
         else
             ram_addr <= (others => '0');
