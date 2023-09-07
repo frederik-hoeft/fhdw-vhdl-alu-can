@@ -435,7 +435,7 @@ begin
         -- set carry bit for signed 8 bit addition/subtraction
         if (reg_cmd = "0000" and result > 127) or (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
             cout <= '1';
-        elsif (reg_cmd = "0100" and resize(result, 8) < 0) then
+        elsif (reg_cmd = "0100" and result(7) = '1') then
             cout <= '1';
         elsif (reg_cmd = "0101" and result > 127) then
             cout <= '1';
@@ -448,7 +448,7 @@ begin
     begin
         -- set ov for add, sub, neg, shr, shl
         -- cheat by using 16 bits :)
-        if ((reg_cmd = "000-" or reg_cmd = "0100" or reg_cmd = "0110" or reg_cmd = "0101") and (result > 127 or result < -128)) then
+        if ((reg_cmd = "0000" or reg_cmd = "0001" or reg_cmd = "0100") and (result > 127 or result < -128)) then
             ov <= '1';
         else
             ov <= '0';
@@ -463,7 +463,7 @@ begin
             less_than_0 := result < 0;
         else 
             -- 8 bit ops
-            less_than_0 := resize(result, 8) < 0;
+            less_than_0 := result(7) = '1';
         end if;
         -- set sign bit
         if (less_than_0) then
