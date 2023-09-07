@@ -160,6 +160,7 @@ begin
                 can_header_pointer <= 0;
                 -- reset the CAN header register to dummy header from Wikipedia
                 can_dlc <= "0000";
+                can_arbitration_buffer <= (others => '0');
             else
                 state <= next_state;
                 crc_pdata <= crc_pnext;
@@ -167,6 +168,7 @@ begin
                 crc_pend <= crc_pend_next;
                 can_header_pointer <= can_header_pointer_next;
                 can_dlc <= can_dlc_next;
+                can_arbitration_buffer <= can_arbitration_buffer_next;
             end if;
         end if;
     end process;
@@ -270,7 +272,7 @@ begin
     end process;
 
     -- buffer the CAN arbitration field
-    set_can_arbitration_buffer : process(state, reg_cmd, reg_can_arbitration)
+    set_can_arbitration_buffer : process(state, reg_cmd, reg_can_arbitration, can_arbitration_buffer)
     begin
         if (state = idle and reg_cmd = "1110") then
             can_arbitration_buffer_next <= reg_can_arbitration;
