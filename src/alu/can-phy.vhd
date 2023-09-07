@@ -33,8 +33,8 @@ architecture behavioral of can_phy is
     -- ACK, IFS, etc via state machine
     signal tx_buffer : std_logic_vector(82 downto 0);
     signal tx_buffer_next : std_logic_vector(82 downto 0);
-    signal tx_buffer_ptr : integer range 0 to 82 := 0;
-    signal tx_buffer_ptr_next : integer range 0 to 82 := 0;
+    signal tx_buffer_ptr : integer range 0 to 83 := 0;
+    signal tx_buffer_ptr_next : integer range 0 to 83 := 0;
 
     signal tx_bit_counter : integer range 0 to 82 := 0;
     signal tx_bit_counter_next : integer range 0 to 82 := 0;
@@ -154,7 +154,7 @@ begin
             -- header is 19 bits, word size is 8 bits
             -- so the first word contains only 3 bits of actual data
             tx_buffer_ptr_next <= 3;
-        elsif (buffer_strobe = '1' and tx_buffer_ptr + 8 < 82) then
+        elsif (buffer_strobe = '1') then
             -- after the first word, the buffer pointer is incremented by full words
             tx_buffer_ptr_next <= tx_buffer_ptr + 8;
         elsif (state = idle) then
@@ -175,9 +175,9 @@ begin
             if (tx_buffer_ptr = 0) then
                 -- first word, only 3 bits of data
                 tx_buffer_tmp(82 downto 80) := parallel_in(2 downto 0);
-            else
+            elsif (75 >= tx_buffer_ptr) then
                 -- after the first word, write the full 8 bits
-                tx_buffer_tmp(82 - tx_buffer_ptr downto 82 - tx_buffer_ptr - 7) := parallel_in;
+                tx_buffer_tmp(82 - tx_buffer_ptr downto 75 - tx_buffer_ptr) := parallel_in;
             end if;
         end if;
         tx_buffer_next <= tx_buffer_tmp;
