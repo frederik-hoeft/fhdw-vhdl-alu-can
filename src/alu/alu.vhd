@@ -385,9 +385,9 @@ begin
                     when "0001" => -- flow = a - b
                         result <= a_exp - b_exp;
                     when "0010" => -- flow = (a + b) * 2
-                        result <= (a_exp + b_exp) sll 1; -- assuming big endian
+                        result <= (a_exp + b_exp) sll 1; -- 16 bit OP & assuming big endian
                     when "0011" => -- flow = (a + b) * 4
-                        result <= (a_exp + b_exp) sll 2; -- assuming big endian
+                        result <= (a_exp + b_exp) sll 2; -- 16 bit OP & assuming big endian
                     when "0100" => -- flow = -a
                         result <= -a_exp;
                     when "0101" => -- flow = a << 1
@@ -435,6 +435,10 @@ begin
         -- set carry bit for signed 8 bit addition/subtraction
         if (reg_cmd = "0000" and result > 127) or (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
             cout <= '1';
+        elsif (reg_cmd = "0100" and resize(result, 8) < 0) then
+            cout <= '1';
+        elsif (reg_cmd = "0101" and result > 127) then
+            cout <= '1';
         else
             cout <= '0';
         end if;
@@ -442,18 +446,27 @@ begin
 
     set_ov : process(reg_cmd, result)
     begin
-        -- set overflow bit for signed 8 bit addition/subtraction
-        if reg_cmd = "000-" and (result > 127 or result < -128) then
+        -- set ov for add, sub, neg, shr, shl
+        -- cheat by using 16 bits :)
+        if ((reg_cmd = "000-" or reg_cmd = "0100" or reg_cmd = "0110" or reg_cmd = "0101") and (result > 127 or result < -128)) then
             ov <= '1';
         else
             ov <= '0';
         end if;
     end process;
 
-    set_sign : process(result)
+    set_sign : process(reg_cmd, result)
+        variable less_than_0 : boolean;
     begin
-        -- set sign bit for signed 16 bit result
-        if result < 0 then
+        if (reg_cmd = "0010" or reg_cmd = "0011" or reg_cmd = "1001") then
+            -- 16 bit ops
+            less_than_0 := result < 0;
+        else 
+            -- 8 bit ops
+            less_than_0 := resize(result, 8) < 0;
+        end if;
+        -- set sign bit
+        if (less_than_0) then
             sign <= '1';
         else
             sign <= '0';
