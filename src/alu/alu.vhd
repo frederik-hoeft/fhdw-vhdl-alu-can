@@ -368,7 +368,7 @@ begin
 
     set_ram_write: process(state, reg_cmd, reg_a)
     begin
-        if (state = idle and reg_cmd = "1100") then
+        if ((state = idle or state = can_transmitting) and reg_cmd = "1100") then
             ram_we <= '1';
             ram_di <= std_logic_vector(reg_a);
         else 
