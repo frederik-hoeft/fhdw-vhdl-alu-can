@@ -200,3 +200,197 @@ MUL,127,-128,mul,0,,0b11000000,0b10000000,0,0,0,1,0,0,0,1
 MUL,-128,-128,mul,0,,0b01000000,0,0,1,0,0,0,0,0,1
 MUL,-128,-127,mul,0,,0b00111111,0b10000000,0,0,0,0,0,0,0,1
 MUL,43,122,mul,0,,0b00010100,0b01111110,0,0,0,0,0,0,0,1
+nand,0,0,nand,0,,X,-1,0,1,0,1,0,0,0,1
+nand,-1,-1,nand,0,,X,0,0,1,0,0,0,0,0,1
+nand,0b01010101,0b10101010,nand,0,,X,-1,0,0,0,1,0,0,0,1
+nand,0b01010101,0b11001100,nand,0,,X,-69,0,0,0,1,0,0,0,1
+nand,-128,-1,nand,0,,X,127,0,0,0,0,0,0,0,1
+nand,2,4,nand,0,,X,-1,0,0,0,1,0,0,0,1
+nand,0b11110000,0b00110011,nand,0,,X,-49,0,0,0,1,0,0,0,1
+nand,127,127,nand,0,,X,-128,0,1,0,1,0,0,0,1
+nand,-128,-128,nand,0,,X,127,0,1,0,0,0,0,0,1
+xor,0,0,xor,0,,X,0,0,1,0,0,0,0,0,1
+xor,-1,-1,xor,0,,X,0,0,1,0,0,0,0,0,1
+xor,0b01010101,0b10101010,xor,0,,X,-1,0,0,0,1,0,0,0,1
+xor,0b01010101,0b11001100,xor,0,,X,0b10011001,0,0,0,1,0,0,0,1
+xor,-128,-1,xor,0,,X,127,0,0,0,0,0,0,0,1
+xor,2,4,xor,0,,X,6,0,0,0,0,0,0,0,1
+xor,0b11110000,0b00110011,xor,0,,X,0b11000011,0,0,0,1,0,0,0,1
+xor,127,127,xor,0,,X,0,0,1,0,0,0,0,0,1
+xor,-128,-128,xor,0,,X,0,0,1,0,0,0,0,0,1
+mov ,0,0,mov,0,,X,X,0,1,0,X,0,0,0,1
+crc,0,0,crc,0,,X,X,0,1,0,X,1,1,0,1
+nop,0,0,nop,0,,0,0,0,1,0,0,0,0,0,1
+mov ,0x43,16,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov ,0x52,17,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov ,0x43,18,mov,0,,X,X,0,0,0,X,0,0,0,1
+crc,16,18,crc,0,,X,X,0,0,0,X,1,1,0,1
+wait for crc,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait for crc,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait for crc,0,0,nop,0,,0x4d,0x5b,0,1,0,X,0,0,0,1
+mov H,0x48,0,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov e,0x65,1,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov l,0x6c,2,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov l,0x6c,3,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov o,0x6f,4,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov ,0x20,5,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov w,0x77,6,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov o,0x6f,7,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov r,0x72,8,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov l,0x6c,9,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov d,0x64,10,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov ,0x20,11,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov :,0x3a,12,mov,0,,X,X,0,0,0,X,0,0,0,1
+mov ),0x29,13,mov,0,,X,X,0,0,0,X,0,0,0,1
+CRC,0,13,crc,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+wait,0,0,nop,0,,0x7f,0xb5,0,1,0,X,0,0,0,1
+Prepare CAN: H,0x48,32,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN: e,0x65,33,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN: l,0x6c,34,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN: l,0x6c,35,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN: o,0x6f,36,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN:  ,0x20,37,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN: :,0x3a,38,mov,0,,X,X,0,0,0,X,0,0,0,1
+Prepare CAN: D,0x44,39,mov,0,,X,X,0,0,0,X,0,0,0,1
+Dispatch CAN,32,39,can,0,,X,X,0,0,0,X,0,1,0,1
+buffer header 2,0,0,nop,0,,X,X,0,0,0,X,0,1,1,1
+buffer header 3,0,0,nop,0,,X,X,0,0,0,X,0,1,1,1
+CAN CRC: H,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC: e,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC: l,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC: l,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC: o,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC:  ,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC: :,0,0,nop,0,,X,X,0,0,0,X,1,1,1,1
+CAN CRC: D,0,0,nop,0,,0x47,0x08,0,0,0,X,0,0,1,1
+CAN Mealy to Moore,1,2,add,0,,X,3,0,0,0,0,0,0,1,1
+CAN SOF,4,-4,sub,0,,X,8,0,0,0,0,0,0,1,0
+CAN ID10,7,-100,am2,0,,-1,-186,0,0,0,1,0,0,1,0
+CAN ID9,13,127,am4,0,,2,560,0,0,0,0,0,0,1,0
+CAN ID8,69,0,neg,0,,X,-69,1,0,0,1,0,0,1,0
+CAN ID7,35,0,shl,0,,X,70,0,0,0,0,0,0,1,0
+CAN stuffing,-64,0,shr,0,,X,-32,0,0,0,1,0,0,1,1
+CAN ID6,0b10000001,0,rol,0,,X,3,0,0,0,0,0,0,1,0
+CAN ID5,0b10000001,0,ror,0,,X,-64,0,0,0,1,0,0,1,0
+CAN ID4,-100,-123,mul,0,,0x30,0x0C,0,0,0,0,0,0,1,1
+CAN ID3,0b00100110,0b11101001,nand,0,,X,-33,0,0,0,1,0,0,1,0
+CAN ID2,15,0x0F,xor,0,,X,-16,0,0,0,1,0,0,1,1
+CAN ID1,0x59,64,mov,0,,X,X,0,0,0,X,0,0,1,0
+CAN ID0,64,64,crc,0,,X,X,0,0,0,X,1,1,1,0
+CAN RTR,0,0,nop,0,,0x6f,0xcc,0,1,0,X,0,0,1,0
+CAN IDE,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN r0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN stuffing,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DLC3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DLC2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DLC1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DLC0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA H7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA H6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA H5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA H4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA H3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA H2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA H1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA H0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA e7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA e6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA e5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA e4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA e3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA e2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA e1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA e0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA l1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA l0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA o7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA o6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA o5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA o4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA o3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA o2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA o1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA o0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA  7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA  6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA  5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA  4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA  3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA  2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA  1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA  0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+stuffing,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA :7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA :6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA :5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA :4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA :3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA :2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA :1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA :0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA D7,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA D6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA D5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA D4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA D3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA D2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN DATA D1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN DATA D0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC14,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC13,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC12,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC11,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC10,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC09,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC08,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC07,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC06,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC05,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC04,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC03,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC02,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC01,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC00,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC del,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN ACK,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN ACK del,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF6,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF5,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF4,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF3,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN EOF0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN IFS2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN IFS1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN IFS0,0,0,nop,0,,X,X,X,1,X,X,0,0,0,1
+Dispatch CAN,64,64,can,0,,X,X,0,1,0,X,0,1,0,1
+buffer header 2,0,0,nop,0,,X,X,0,1,0,X,0,1,1,1
+reset,0,0,nop,1,,0,0,0,0,0,0,0,0,0,1
