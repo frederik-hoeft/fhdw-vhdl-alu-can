@@ -1,4 +1,4 @@
-FORMAT:,F::prefix:8,F::prefix:8,F::lut:4->command_lut.json,F::base_2:12,,,F::prefix:8,F::prefix:8,,,,,,,,
+FORMAT:,F::prefix:8,F::prefix:8,F::lut:4->command_lut.json,F::prefix:12,,,F::prefix:8,F::prefix:8,,,,,,,,
 PINS:,a,b,instruction,can arbitration,reset,,result_high,result_low,carry,equal,overflow,sign,crc_busy,not_ready,can_busy,can_output
 reset,0,0,X,X,1,,0,0,0,X,0,0,0,0,0,1
 Add,3,4,add,X,0,,0,7,0,0,0,0,0,0,0,1
