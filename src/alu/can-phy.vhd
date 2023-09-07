@@ -112,7 +112,7 @@ begin
                     next_state <= tx_data;
                 end if;
             when tx_data =>
-                if (tx_bit_pointer = 0 or tx_bit_pointer + 1 = tx_buffer_ptr) then
+                if (tx_bit_pointer = 0 or tx_bit_pointer - 1 = tx_buffer_ptr) then
                     next_state <= tx_crc;
                 else
                     next_state <= tx_data;
@@ -198,7 +198,7 @@ begin
                 tx_buffer_tmp(TX_BUFFER_MAX downto TX_BUFFER_WORD_START + 1) := parallel_in(2 downto 0);
             elsif (tx_buffer_ptr >= 7) then
                 -- after the first word, write the full 8 bits
-                tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr) := parallel_in;
+                tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr - 7) := parallel_in;
             end if;
         end if;
         tx_buffer_next <= tx_buffer_tmp;
@@ -250,7 +250,7 @@ begin
                 tx_crc_bit_pointer_next <= tx_crc_bit_pointer;
             elsif (tx_crc_bit_pointer > 0) then
                 -- otherwise, decrement the pointer if we are not at the end of the tx_crc
-                tx_crc_bit_pointer_next <= tx_crc_bit_pointer 1 1;
+                tx_crc_bit_pointer_next <= tx_crc_bit_pointer - 1;
             else
                 -- if we are at the end of the tx_crc, reset the pointer
                 tx_crc_bit_pointer_next <= TX_CRC_BUFFER_MAX;
