@@ -2,23 +2,23 @@ FORMAT:,F::prefix:8,F::prefix:8,F::lut:4->command_lut.json,,,F::prefix:8,F::pref
 PINS:,a,b,instruction,reset,,result_high,result_low,carry,equal,overflow,sign,crc_busy,not_ready,can_busy,can_output
 reset,0,0,X,1,,0,0,0,X,0,0,0,0,0,1
 Add,3,4,add,0,,0,7,0,0,0,0,0,0,0,1
-Mov 'A' to 0,0x41,0,mov,0,,0,0,0,0,0,0,0,0,0,1
-Mov 'B' to 1,0x42,1,mov,0,,0,0,0,0,0,0,0,0,0,1
-Mov 'C' to 2,0x43,2,mov,0,,0,0,0,0,0,0,0,0,0,1
-Mov 'D' to 3,0x44,3,mov,0,,0,0,0,0,0,0,0,0,0,1
-CRC-15,0,3,crc,0,,X,X,0,0,0,0,1,1,0,1
-CRC-15,0,0,nop,0,,X,X,0,1,0,0,1,1,0,1
-CRC-15,0,0,nop,0,,X,X,0,1,0,0,1,1,0,1
-CRC-15,0,0,nop,0,,X,X,0,1,0,0,1,1,0,1
-CRC-15,0,0,nop,0,,0x1b,0xf1,0,1,0,0,0,0,0,1
+Mov 'A' to 0,0x41,0,mov,0,,0,0,0,0,0,X,0,0,0,1
+Mov 'B' to 1,0x42,1,mov,0,,0,0,0,0,0,X,0,0,0,1
+Mov 'C' to 2,0x43,2,mov,0,,0,0,0,0,0,X,0,0,0,1
+Mov 'D' to 3,0x44,3,mov,0,,0,0,0,0,0,X,0,0,0,1
+CRC-15,0,3,crc,0,,X,X,0,0,0,X,1,1,0,1
+CRC-15,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+CRC-15,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+CRC-15,0,0,nop,0,,X,X,0,1,0,X,1,1,0,1
+CRC-15,0,0,nop,0,,0x1b,0xf1,0,1,0,X,0,0,0,1
 Add,12,13,add,0,,0,25,0,0,0,0,0,0,0,1
-'ABCD' via CAN,0,3,can,0,,X,X,0,0,0,0,0,1,0,1
-buffering 2,0,0,nop,0,,X,X,0,1,0,0,0,1,1,1
-buffering 3,0,0,nop,0,,X,X,0,1,0,0,0,1,1,1
-crc A,0,0,nop,0,,X,X,0,1,0,0,1,1,1,1
-crc B,0,0,nop,0,,X,X,0,1,0,0,1,1,1,1
-crc C,0,0,nop,0,,X,X,0,1,0,0,1,1,1,1
-crc D,0,0,nop,0,,0x1b,0xf1,0,1,0,0,0,0,1,1
+'ABCD' via CAN,0,3,can,0,,X,X,0,0,0,X,0,1,0,1
+buffering 2,0,0,nop,0,,X,X,0,1,0,X,0,1,1,1
+buffering 3,0,0,nop,0,,X,X,0,1,0,X,0,1,1,1
+crc A,0,0,nop,0,,X,X,0,1,0,X,1,1,1,1
+crc B,0,0,nop,0,,X,X,0,1,0,X,1,1,1,1
+crc C,0,0,nop,0,,X,X,0,1,0,X,1,1,1,1
+crc D,0,0,nop,0,,0x1b,0xf1,0,1,0,X,0,0,1,1
 CAN NOP + ADD,1,1,add,0,,0,2,0,1,0,0,0,0,1,1
 CAN SOF,0,0,nop,0,,X,X,0,1,0,0,0,0,1,0
 CAN ID10,0,0,nop,0,,X,X,0,1,0,0,0,0,1,0
