@@ -197,7 +197,7 @@ partial class FormatHandlerChain : IFormatHandlerChain
     }
 }
 
-partial record class DecimalFormatHandler(int Length) : IFormatHandler
+partial record class DecimalFormatHandler(int Length, uint Mask) : IFormatHandler
 {
     public static bool TryCreateFor(string format, out IFormatHandler? handler)
     {
@@ -206,7 +206,8 @@ partial record class DecimalFormatHandler(int Length) : IFormatHandler
         if (match.Success)
         {
             int length = Convert.ToInt32(match.Groups["length"].Value);
-            handler = new DecimalFormatHandler(length);
+            uint mask = (1u << length) - 1;
+            handler = new DecimalFormatHandler(length, mask);
             return true;
         }
         handler = null;
@@ -216,7 +217,7 @@ partial record class DecimalFormatHandler(int Length) : IFormatHandler
     public string Format(string cellValue) => 
         cellValue.Equals("X") 
             ? new string('-', Length) 
-            : Convert.ToString(Convert.ToInt32(cellValue), 2).PadLeft(Length, '0');
+            : Convert.ToString(((uint)Convert.ToInt32(cellValue)) & Mask, 2).PadLeft(Length, '0');
 
     [GeneratedRegex("F::base_10:(?<length>[0-9]+)")]
     private static partial Regex FormatRegex();
@@ -290,7 +291,7 @@ partial record class HexFormatHandler(int Length) : IFormatHandler
     private static partial Regex FormatRegex();
 }
 
-partial record class PrefixFormatHandler(int Length) : IFormatHandler
+partial record class PrefixFormatHandler(int Length, uint Mask) : IFormatHandler
 {
     public static bool TryCreateFor(string format, out IFormatHandler? handler)
     {
@@ -299,7 +300,8 @@ partial record class PrefixFormatHandler(int Length) : IFormatHandler
         if (match.Success)
         {
             int length = Convert.ToInt32(match.Groups["length"].Value);
-            handler = new PrefixFormatHandler(length);
+            uint mask = (1u << length) - 1;
+            handler = new PrefixFormatHandler(length, mask);
             return true;
         }
         handler = null;
@@ -311,7 +313,7 @@ partial record class PrefixFormatHandler(int Length) : IFormatHandler
         "X" => new string('-', Length),
         ['0', 'x', ..] => Convert.ToString(int.Parse(cellValue[2..], NumberStyles.HexNumber), 2).PadLeft(Length, '0'),
         ['0', 'b', ..] => cellValue[2..].PadLeft(Length, '0'),
-        _ => Convert.ToString(Convert.ToInt32(cellValue), 2).PadLeft(Length, '0')
+        _ => Convert.ToString(((uint)Convert.ToInt32(cellValue)) & Mask, 2).PadLeft(Length, '0')
     };
 
     [GeneratedRegex("F::prefix:(?<length>[0-9]+)")]
