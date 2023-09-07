@@ -74,6 +74,8 @@ architecture alu_beh of alu is
     signal reg_cmd : std_logic_vector(3 downto 0) := (others => '0');
 
     signal reg_can_dlc, reg_can_dlc_next : std_logic_vector(3 downto 0) := (others => '0');
+
+    -- dummy value, image this is set from the outside somehow
     constant CAN_HEADER_NO_DLC : std_logic_vector(14 downto 0) := "000000010100000";
     
     signal reg_can : std_logic_vector(18 downto 0);
@@ -446,7 +448,7 @@ begin
 
     set_ov : process(reg_cmd, result)
     begin
-        -- set ov for add, sub, neg, shr, shl
+        -- set ov for add, sub, neg
         -- cheat by using 16 bits :)
         if ((reg_cmd = "0000" or reg_cmd = "0001" or reg_cmd = "0100") and (result > 127 or result < -128)) then
             ov <= '1';
