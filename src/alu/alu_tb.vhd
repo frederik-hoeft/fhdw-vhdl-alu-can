@@ -15,6 +15,7 @@ architecture test_bench of alu_tb is
     component alu is
         port (clk, reset : in std_logic;
         a, b : in std_logic_vector(7 downto 0);
+        can_arbitration : in std_logic_vector(11 downto 0);
         cmd : in std_logic_vector(3 downto 0);
         flow, fhigh : out std_logic_vector(7 downto 0);
         cout, equal, ov, sign, cb, ready, can, can_busy : out std_logic);
@@ -23,11 +24,13 @@ architecture test_bench of alu_tb is
     -- inputs
     signal clk : std_logic := '1';
     signal a, b : std_logic_vector(7 downto 0) := (others => '0');
+    signal can_arbitration : std_logic_vector(11 downto 0) := (others => '0');
     signal cmd : std_logic_vector(3 downto 0) := (others => '0');
     signal reset : std_logic_vector(0 downto 0) := (others => '0');
 
     signal delayed_a : std_logic_vector(7 downto 0) := (others => '0');
     signal delayed_b : std_logic_vector(7 downto 0) := (others => '0');
+    signal delayed_can_arbitration : std_logic_vector(11 downto 0) := (others => '0');
     signal delayed_cmd : std_logic_vector(3 downto 0) := (others => '0');
     signal delayed_reset : std_logic_vector(0 downto 0) := (others => '0');
 
@@ -159,6 +162,7 @@ begin
         reset => reset(0),
         a => a,
         b => b,
+        can_arbitration => can_arbitration,
         cmd => cmd,
         flow => flow,
         fhigh => fhigh,
@@ -179,6 +183,7 @@ begin
         if (rising_edge(clk)) then
             delayed_a <= a;
             delayed_b <= b;
+            delayed_can_arbitration <= can_arbitration;
             delayed_cmd <= cmd;
             delayed_reset <= reset;
         end if;
@@ -192,6 +197,7 @@ begin
         variable buffer_1: string(1 downto 1);
         variable buffer_4: string(4 downto 1);
         variable buffer_8: string(8 downto 1);
+        variable buffer_12: string(12 downto 1);
     begin
         assert DebugVariable report "STIMULI" severity note;
         -- start immediately
@@ -210,12 +216,17 @@ begin
                 read(var_line, buffer_4);
                 cmd <= string2std_logic(buffer_4);
                 read(var_line, whitespace);
+                -- can arbitration
+                read(var_line, buffer_12);
+                can_arbitration <= string2std_logic(buffer_12);
+                read(var_line, whitespace);
                 -- reset
                 read(var_line, buffer_1);
                 reset <= string2std_logic(buffer_1);
             else
                 a <= (others => '0');
                 b <= (others => '0');
+                can_arbitration <= (others => '0');
                 cmd <= (others => '0');
                 reset <= (others => '1');
             end if;
@@ -321,6 +332,7 @@ begin
         variable separator: character := ',';
         variable v_a: string(8 downto 1);
         variable v_b: string(8 downto 1);
+        variable v_can_arbitration: string(12 downto 1);
         variable v_cmd: string(4 downto 1);
         variable v_reset: string(1 downto 1);
         variable v_flow: string(8 downto 1);
@@ -342,7 +354,7 @@ begin
             is_first_monitor_call <= false;
             write(var_line, "<STATUS> at <TIME> (@");
             write(var_line, clock_period);
-            write(var_line, "),,a,b,cmd,reset,,flow(exp:act),fhigh(exp:act),cout(exp:act),equal(exp:act),ov(exp:act),sign(exp:act),cb(exp:act),ready(exp:act),can_busy(exp:act),can(exp:act)");
+            write(var_line, "),,a,b,cmd,can_arbitration,reset,,flow(exp:act),fhigh(exp:act),cout(exp:act),equal(exp:act),ov(exp:act),sign(exp:act),cb(exp:act),ready(exp:act),can_busy(exp:act),can(exp:act)");
             writeline(protocol, var_line);
         end if;
         -- only log after first two clock cycles (one to allow for device to initialize
@@ -353,6 +365,7 @@ begin
                 v_a := std_logic2string(delayed_a);
                 v_b := std_logic2string(delayed_b);
                 v_cmd := std_logic2string(delayed_cmd);
+                v_can_arbitration := std_logic2string(delayed_can_arbitration);
                 v_reset := std_logic2string(delayed_reset);
                 v_flow := std_logic2string(flow);
                 v_fhigh := std_logic2string(fhigh);
@@ -379,6 +392,8 @@ begin
                 write(var_line, v_b);
                 write(var_line, separator);
                 write(var_line, v_cmd);
+                write(var_line, separator);
+                write(var_line, v_can_arbitration);
                 write(var_line, separator);
                 write(var_line, v_reset);
                 write(var_line, separator);

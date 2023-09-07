@@ -8,6 +8,7 @@ use unisim.vcomponents.all;
 entity alu is port (
     clk, reset : in std_logic;
     a, b : in std_logic_vector(7 downto 0);
+    can_arbitration : in std_logic_vector(11 downto 0);
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
     fhigh : out std_logic_vector(7 downto 0);
@@ -73,12 +74,13 @@ architecture alu_beh of alu is
     -- 1111: RESERVED
     signal reg_cmd : std_logic_vector(3 downto 0) := (others => '0');
 
-    signal reg_can_dlc, reg_can_dlc_next : std_logic_vector(3 downto 0) := (others => '0');
-
-    -- dummy value, image this is set from the outside somehow
-    constant CAN_HEADER_NO_DLC : std_logic_vector(14 downto 0) := "000000010100000";
+    signal can_dlc, can_dlc_next : std_logic_vector(3 downto 0) := (others => '0');
     
-    signal reg_can : std_logic_vector(18 downto 0);
+    signal reg_can_arbitration : std_logic_vector(11 downto 0) := (others => '0');
+
+    signal can_arbitration_buffer, can_arbitration_buffer_next : std_logic_vector(11 downto 0) := (others => '0');
+
+    signal can_header : std_logic_vector(18 downto 0);
 
     -- registers for storing the input values
     signal reg_a, reg_b : signed(7 downto 0) := (others => '0');
@@ -140,6 +142,7 @@ begin
             reg_cmd <= cmd;
             reg_a <= signed(a);
             reg_b <= signed(b);
+            reg_can_arbitration <= can_arbitration;
         end if;
     end process;
 
@@ -156,14 +159,14 @@ begin
                 crc_pend <= (others => '0');
                 can_header_pointer <= 0;
                 -- reset the CAN header register to dummy header from Wikipedia
-                reg_can_dlc <= "0000";
+                can_dlc <= "0000";
             else
                 state <= next_state;
                 crc_pdata <= crc_pnext;
                 crc_current <= crc_next;
                 crc_pend <= crc_pend_next;
                 can_header_pointer <= can_header_pointer_next;
-                reg_can_dlc <= reg_can_dlc_next;
+                can_dlc <= can_dlc_next;
             end if;
         end if;
     end process;
@@ -266,6 +269,16 @@ begin
         end if;
     end process;
 
+    -- buffer the CAN arbitration field
+    set_can_arbitration_buffer : process(state, reg_cmd, reg_can_arbitration)
+    begin
+        if (state = idle and reg_cmd = "1110") then
+            can_arbitration_buffer_next <= reg_can_arbitration;
+        else
+            can_arbitration_buffer_next <= can_arbitration_buffer;
+        end if;
+    end process;
+
     set_can_header_pointer : process(state, reg_cmd, can_header_pointer)
     begin
         -- the can header is 19 bits long, and we buffer in words of 8 bits
@@ -303,32 +316,34 @@ begin
     end process;
 
     -- it's a Mealy FSM, so everything is faster by 1 cycle
-    set_can_parallel_in : process(state, can_header_pointer, reg_cmd, reg_can, ram_do)
+    set_can_parallel_in : process(state, can_header_pointer, reg_cmd, can_header, ram_do)
     begin
         if (state = idle and reg_cmd = "1110") then
             -- start buffering the CAN header
             -- the first word only contains 19 % 8 = 3 bits of the header
-            can_parallel_in <= "00000" & reg_can(18 downto 16);
+            can_parallel_in <= "00000" & can_header(18 downto 16);
         elsif (state = can_buffering and can_header_pointer < CAN_HEADER_LENGTH) then
             -- buffer the rest of the CAN header
-            can_parallel_in <= reg_can(18 - can_header_pointer downto 18 - can_header_pointer - 7);
+            can_parallel_in <= can_header(18 - can_header_pointer downto 18 - can_header_pointer - 7);
         else 
             -- otherwise, buffer the data from the RAM
             can_parallel_in <= ram_do;
         end if;
     end process;
 
-    set_reg_can_dlc : process(state, can_header_pointer, crc_pdata, crc_pend, reg_can_dlc)
+    set_reg_can_dlc : process(state, can_header_pointer, crc_pdata, crc_pend, can_dlc)
     begin
         if (state = can_buffering and can_header_pointer = 3) then
             -- write the data length code to the CAN header
-            reg_can_dlc_next <= std_logic_vector(resize(unsigned(crc_pend - crc_pdata + 1), 4));
+            can_dlc_next <= std_logic_vector(resize(unsigned(crc_pend - crc_pdata + 1), 4));
         else
-            reg_can_dlc_next <= reg_can_dlc;
+            can_dlc_next <= can_dlc;
         end if;
     end process set_reg_can_dlc;
     
-    reg_can <= CAN_HEADER_NO_DLC & reg_can_dlc;
+    -- concatenate the CAN arbitration field and the CAN header
+    --            SOF          ID + RTR       IDE + R0    DLC
+    can_header <= "0" & can_arbitration_buffer & "00" & can_dlc;
 
     cb <= crc_busy_corrected;
     
