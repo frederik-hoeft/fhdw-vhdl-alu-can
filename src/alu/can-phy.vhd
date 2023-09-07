@@ -31,23 +31,42 @@ architecture behavioral of can_phy is
     -- up to 64 bits data
     -- (15 bits tx_crc stored separately)
     -- ACK, IFS, etc via state machine
-    signal tx_buffer : std_logic_vector(82 downto 0);
-    signal tx_buffer_next : std_logic_vector(82 downto 0);
-    signal tx_buffer_ptr : integer range 0 to 83 := 0;
-    signal tx_buffer_ptr_next : integer range 0 to 83 := 0;
+    constant TX_BUFFER_MAX : integer := 82;
+    constant TX_BUFFER_WORD_START : integer := TX_BUFFER_MAX - 3;
 
-    signal tx_bit_counter : integer range 0 to 82 := 0;
-    signal tx_bit_counter_next : integer range 0 to 82 := 0;
+    signal tx_buffer : std_logic_vector(TX_BUFFER_MAX downto 0);
+    signal tx_buffer_next : std_logic_vector(TX_BUFFER_MAX downto 0);
+    -- the buffer pointer points to the next word to be written to
+    -- starting at the top of the buffer, and going down
+    -- the buffer pointer is -1 when the buffer is full
+    signal tx_buffer_ptr : integer range TX_BUFFER_MAX downto -1 := 0;
+    signal tx_buffer_ptr_next : integer range TX_BUFFER_MAX downto -1 := 0;
 
-    signal tx_crc_buffer, tx_crc_buffer_next : std_logic_vector(14 downto 0);
-    signal tx_crc_bit_counter : integer range 0 to 14 := 0;
-    signal tx_crc_bit_counter_next : integer range 0 to 14 := 0;
+    -- the data bit pointer points to the next bit to be transmitted
+    -- also starting at the top of the buffer, and going down
+    signal tx_bit_pointer : integer range TX_BUFFER_MAX downto 0 := 0;
+    signal tx_bit_pointer_next : integer range TX_BUFFER_MAX downto 0 := 0;
+
+    constant TX_CRC_BUFFER_MAX : integer := 14;
+
+    signal tx_crc_buffer, tx_crc_buffer_next : std_logic_vector(TX_CRC_BUFFER_MAX downto 0);
+
+    -- the tx_crc bit pointer points to the next CRC bit to be transmitted
+    -- to ensure network order, the CRC is transmitted MSB first (pointer goes down)
+    signal tx_crc_bit_pointer : integer range TX_CRC_BUFFER_MAX downto 0 := 0;
+    signal tx_crc_bit_pointer_next : integer range TX_CRC_BUFFER_MAX downto 0 := 0;
 
     signal state : state_type := idle;
     signal next_state : state_type := idle;
 
+    -- bit stuffing
+    -- the CAN bus requires that no more than 5 consecutive bits of the same value are transmitted
+    -- we count the number of consecutive bits of the same value that we have transmitted
+    -- so if we reach 4, the next bit is the inverse of the previous bit
     signal stuffing_counter : integer range 0 to 4 := 0;
     signal stuffing_counter_next : integer range 0 to 4 := 0;
+    -- the stuffing bit is the bit that we are counting, NOT the bit that will be inserted
+    -- so if the stuffing_bit is 0, then the previous bit was also 0. In case of stuffing, the inserted will be 1
     signal stuffing_bit : std_logic := '0';
     signal stuffing_bit_next : std_logic := '0';
 begin
@@ -59,9 +78,9 @@ begin
                 state <= idle;
                 tx_crc_buffer <= (others => '0');
                 tx_buffer <= (others => '0');
-                tx_buffer_ptr <= 0;
-                tx_bit_counter <= 0;
-                tx_crc_bit_counter <= 0;
+                tx_buffer_ptr <= TX_BUFFER_MAX;
+                tx_bit_pointer <= TX_BUFFER_MAX;
+                tx_crc_bit_pointer <= TX_CRC_BUFFER_MAX;
                 stuffing_counter <= 0;
                 stuffing_bit <= '1';
             else
@@ -69,15 +88,15 @@ begin
                 tx_crc_buffer <= tx_crc_buffer_next;
                 tx_buffer <= tx_buffer_next;
                 tx_buffer_ptr <= tx_buffer_ptr_next;
-                tx_bit_counter <= tx_bit_counter_next;
-                tx_crc_bit_counter <= tx_crc_bit_counter_next;
+                tx_bit_pointer <= tx_bit_pointer_next;
+                tx_crc_bit_pointer <= tx_crc_bit_pointer_next;
                 stuffing_counter <= stuffing_counter_next;
                 stuffing_bit <= stuffing_bit_next;
             end if;
         end if;
     end process refresh_state;
 
-    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_counter, tx_crc_bit_counter)
+    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer)
     begin
         case state is
             when idle =>
@@ -93,13 +112,13 @@ begin
                     next_state <= tx_data;
                 end if;
             when tx_data =>
-                if (tx_bit_counter = 82 or tx_bit_counter = tx_buffer_ptr - 1) then
+                if (tx_bit_pointer = 0 or tx_bit_pointer + 1 = tx_buffer_ptr) then
                     next_state <= tx_crc;
                 else
                     next_state <= tx_data;
                 end if;
             when tx_crc =>
-                if (tx_crc_bit_counter = 14) then
+                if (tx_crc_bit_pointer = 0) then
                     next_state <= tx_crc_delimiter;
                 else
                     next_state <= tx_crc;
@@ -153,13 +172,15 @@ begin
         if (state = idle and buffer_strobe = '1') then
             -- header is 19 bits, word size is 8 bits
             -- so the first word contains only 3 bits of actual data
-            tx_buffer_ptr_next <= 3;
-        elsif (buffer_strobe = '1') then
-            -- after the first word, the buffer pointer is incremented by full words
-            tx_buffer_ptr_next <= tx_buffer_ptr + 8;
+            -- after that, the buffer pointer is decremented by full words
+            tx_buffer_ptr_next <= TX_BUFFER_WORD_START;
+        elsif (buffer_strobe = '1' and tx_buffer_ptr > 0) then
+            -- the buffer strobe is active, and we are not idling, decrement the buffer pointer
+            -- in full words. The buffer pointer is -1 when the buffer is full.
+            tx_buffer_ptr_next <= tx_buffer_ptr - 8;
         elsif (state = idle) then
-            -- if the buffer strobe is not active, and we are idling, the buffer pointer is 0
-            tx_buffer_ptr_next <= 0;
+            -- if we are idling, reset the buffer pointer
+            tx_buffer_ptr_next <= TX_BUFFER_MAX;
         else
             -- otherwise, hold the current value
             tx_buffer_ptr_next <= tx_buffer_ptr;
@@ -168,16 +189,16 @@ begin
 
     -- update the buffer and write new data
     set_next_tx_buffer : process(state, tx_buffer, tx_buffer_ptr, parallel_in, buffer_strobe)
-        variable tx_buffer_tmp : std_logic_vector(82 downto 0);
+        variable tx_buffer_tmp : std_logic_vector(TX_BUFFER_MAX downto 0);
     begin
         tx_buffer_tmp := tx_buffer;
         if (buffer_strobe = '1') then
-            if (tx_buffer_ptr = 0) then
-                -- first word, only 3 bits of data
-                tx_buffer_tmp(82 downto 80) := parallel_in(2 downto 0);
-            elsif (75 >= tx_buffer_ptr) then
+            if (tx_buffer_ptr = TX_BUFFER_MAX) then
+                -- first word, only 3 bits of data are written to the buffer
+                tx_buffer_tmp(TX_BUFFER_MAX downto TX_BUFFER_WORD_START + 1) := parallel_in(2 downto 0);
+            elsif (tx_buffer_ptr >= 7) then
                 -- after the first word, write the full 8 bits
-                tx_buffer_tmp(82 - tx_buffer_ptr downto 75 - tx_buffer_ptr) := parallel_in;
+                tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr) := parallel_in;
             end if;
         end if;
         tx_buffer_next <= tx_buffer_tmp;
@@ -200,54 +221,54 @@ begin
         end if;
     end process set_stuffing_params;
 
-    -- update the transmit bit counter
-    set_next_tx_bit_counter : process(state, tx_bit_counter, stuffing_counter)
+    -- update the transmit bit pointer
+    set_next_tx_bit_counter : process(state, tx_bit_pointer, stuffing_counter)
     begin
         if (state = tx_data) then
             if (stuffing_counter = 4) then
                 -- if we are stuffing, delay the transmission of the next bit
-                tx_bit_counter_next <= tx_bit_counter;
-            elsif (tx_bit_counter < 82) then
-                -- otherwise, increment the counter if we are not at the end of the buffer
-                tx_bit_counter_next <= tx_bit_counter + 1;
+                tx_bit_pointer_next <= tx_bit_pointer;
+            elsif (tx_bit_pointer > 0) then
+                -- otherwise, decrement the pointer if we are not at the end of the buffer
+                tx_bit_pointer_next <= tx_bit_pointer - 1;
             else
-                -- if we are at the end of the buffer, reset the counter
-                tx_bit_counter_next <= 0;
+                -- if we are at the end of the buffer, reset the pointer
+                tx_bit_pointer_next <= TX_BUFFER_MAX;
             end if;
         else
-            -- if we are not transmitting data, reset the counter
-            tx_bit_counter_next <= 0;
+            -- if we are not transmitting data, reset the pointer
+            tx_bit_pointer_next <= TX_BUFFER_MAX;
         end if;
     end process set_next_tx_bit_counter;
 
-    -- update the transmit tx_crc bit counter
-    set_next_tx_crc_bit_counter : process(state, tx_crc_bit_counter, stuffing_counter)
+    -- update the transmit tx_crc bit pointer
+    set_next_tx_crc_bit_counter : process(state, tx_crc_bit_pointer, stuffing_counter)
     begin
         if (state = tx_crc) then
             if (stuffing_counter = 4) then
                 -- if we are stuffing, delay the transmission of the next bit
-                tx_crc_bit_counter_next <= tx_crc_bit_counter;
-            elsif (tx_crc_bit_counter < 14) then
-                -- otherwise, increment the counter if we are not at the end of the tx_crc
-                tx_crc_bit_counter_next <= tx_crc_bit_counter + 1;
+                tx_crc_bit_pointer_next <= tx_crc_bit_pointer;
+            elsif (tx_crc_bit_pointer > 0) then
+                -- otherwise, decrement the pointer if we are not at the end of the tx_crc
+                tx_crc_bit_pointer_next <= tx_crc_bit_pointer 1 1;
             else
-                -- if we are at the end of the tx_crc, reset the counter
-                tx_crc_bit_counter_next <= 0;
+                -- if we are at the end of the tx_crc, reset the pointer
+                tx_crc_bit_pointer_next <= TX_CRC_BUFFER_MAX;
             end if;
         else
-            -- if we are not transmitting tx_crc, reset the counter
-            tx_crc_bit_counter_next <= 0;
+            -- if we are not transmitting tx_crc, reset the pointer
+            tx_crc_bit_pointer_next <= TX_CRC_BUFFER_MAX;
         end if;
     end process set_next_tx_crc_bit_counter;
 
     -- determine the next thing to transmit, independent of bit stuffing
-    set_can_out_pre_stuffing : process(state, tx_buffer, tx_bit_counter, tx_crc_buffer, tx_crc_bit_counter)
+    set_can_out_pre_stuffing : process(state, tx_buffer, tx_bit_pointer, tx_crc_buffer, tx_crc_bit_pointer)
     begin
         case state is
             when tx_data =>
-                can_out_pre_stuffing <= tx_buffer(82 - tx_bit_counter);
+                can_out_pre_stuffing <= tx_buffer(tx_bit_pointer);
             when tx_crc =>
-                can_out_pre_stuffing <= tx_crc_buffer(14 - tx_crc_bit_counter);
+                can_out_pre_stuffing <= tx_crc_buffer(tx_crc_bit_pointer);
             when tx_crc_delimiter =>
                 can_out_pre_stuffing <= '1';
             when tx_ack =>
