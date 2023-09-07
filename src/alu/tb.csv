@@ -364,19 +364,19 @@ CAN DATA D2,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN DATA D1,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
 CAN DATA D0,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
 CAN CRC14,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
-CAN CRC13,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC13,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN CRC12,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
 CAN CRC11,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
-CAN CRC10,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC10,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
 CAN CRC09,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN CRC08,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN CRC07,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
-CAN CRC06,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
-CAN CRC05,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
-CAN CRC04,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC06,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC05,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
+CAN CRC04,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN CRC03,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN CRC02,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
-CAN CRC01,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
+CAN CRC01,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN CRC00,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
 CAN CRC del,0,0,nop,0,,X,X,X,1,X,X,0,0,1,1
 CAN ACK,0,0,nop,0,,X,X,X,1,X,X,0,0,1,0
