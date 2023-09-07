@@ -154,7 +154,7 @@ begin
             -- header is 19 bits, word size is 8 bits
             -- so the first word contains only 3 bits of actual data
             tx_buffer_ptr_next <= 3;
-        elsif (buffer_strobe = '1' and tx_buffer_ptr + 8 < 75) then
+        elsif (buffer_strobe = '1' and tx_buffer_ptr + 8 < 82) then
             -- after the first word, the buffer pointer is incremented by full words
             tx_buffer_ptr_next <= tx_buffer_ptr + 8;
         elsif (state = idle) then

@@ -220,7 +220,7 @@
       <obj_property name="ObjectShortName">parallel_in[7:0]</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="CustomSignalColor">#00ffff</obj_property>
-      <obj_property name="Radix">ASCIIRADIX</obj_property>
+      <obj_property name="Radix">BINARYRADIX</obj_property>
    </wvobject>
    <wvobject fp_name="/alu_tb/uut/can_controller/tx_buffer_ptr" type="other" db_ref_id="1">
       <obj_property name="ElementShortName">tx_buffer_ptr</obj_property>
