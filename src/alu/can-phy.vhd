@@ -31,20 +31,22 @@ architecture behavioral of can_phy is
     -- up to 64 bits data
     -- (15 bits tx_crc stored separately)
     -- ACK, IFS, etc via state machine
-    constant TX_BUFFER_MAX_PADDING : integer := 87;
     constant TX_BUFFER_MAX : integer := 82;
 
-    signal tx_buffer : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
-    signal tx_buffer_next : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
-    -- the buffer pointer points to the next word to be written to
-    -- starting at the top of the buffer, and going down
-    signal tx_buffer_ptr : integer range TX_BUFFER_MAX_PADDING downto 0 := 0;
-    signal tx_buffer_ptr_next : integer range TX_BUFFER_MAX_PADDING downto 0 := 0;
+    signal tx_buffer : std_logic_vector(TX_BUFFER_MAX downto 0);
 
     -- the buffer size counter is 0 when the buffer is full
     constant TX_BUFFER_SIZE_COUNTER_MAX : integer := 11;
     signal tx_buffer_size_counter, tx_buffer_size_counter_next : unsigned(3 downto 0) := to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
     signal tx_end_of_data : std_logic_vector(6 downto 0);
+
+    signal tx_buffer_10, tx_buffer_10_next : std_logic_vector(2 downto 0);
+
+    signal tx_buffer_9, tx_buffer_8, tx_buffer_7, tx_buffer_6, tx_buffer_5, 
+           tx_buffer_4, tx_buffer_3, tx_buffer_2, tx_buffer_1, tx_buffer_0 : std_logic_vector(7 downto 0);
+        
+    signal tx_buffer_9_next, tx_buffer_8_next, tx_buffer_7_next, tx_buffer_6_next, tx_buffer_5_next, 
+           tx_buffer_4_next, tx_buffer_3_next, tx_buffer_2_next, tx_buffer_1_next, tx_buffer_0_next : std_logic_vector(7 downto 0);
 
     -- the data bit pointer points to the next bit to be transmitted
     -- also starting at the top of the buffer, and going down
@@ -81,29 +83,51 @@ begin
             if (reset = '1') then
                 state <= idle;
                 tx_crc_buffer <= (others => '0');
-                tx_buffer <= (others => '0');
-                tx_buffer_ptr <= TX_BUFFER_MAX_PADDING;
                 tx_bit_pointer <= TX_BUFFER_MAX;
                 tx_crc_bit_pointer <= TX_CRC_BUFFER_MAX;
                 stuffing_counter <= 0;
                 stuffing_bit <= '1';
                 tx_buffer_size_counter <= to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
+                tx_buffer_10 <= (others => '0');
+                tx_buffer_9 <= (others => '0');
+                tx_buffer_8 <= (others => '0');
+                tx_buffer_7 <= (others => '0');
+                tx_buffer_6 <= (others => '0');
+                tx_buffer_5 <= (others => '0');
+                tx_buffer_4 <= (others => '0');
+                tx_buffer_3 <= (others => '0');
+                tx_buffer_2 <= (others => '0');
+                tx_buffer_1 <= (others => '0');
+                tx_buffer_0 <= (others => '0');
             else
                 state <= next_state;
                 tx_crc_buffer <= tx_crc_buffer_next;
-                tx_buffer <= tx_buffer_next;
-                tx_buffer_ptr <= tx_buffer_ptr_next;
                 tx_bit_pointer <= tx_bit_pointer_next;
                 tx_crc_bit_pointer <= tx_crc_bit_pointer_next;
                 stuffing_counter <= stuffing_counter_next;
                 stuffing_bit <= stuffing_bit_next;
                 tx_buffer_size_counter <= tx_buffer_size_counter_next;
+                tx_buffer_10 <= tx_buffer_10_next;
+                tx_buffer_9 <= tx_buffer_9_next;
+                tx_buffer_8 <= tx_buffer_8_next;
+                tx_buffer_7 <= tx_buffer_7_next;
+                tx_buffer_6 <= tx_buffer_6_next;
+                tx_buffer_5 <= tx_buffer_5_next;
+                tx_buffer_4 <= tx_buffer_4_next;
+                tx_buffer_3 <= tx_buffer_3_next;
+                tx_buffer_2 <= tx_buffer_2_next;
+                tx_buffer_1 <= tx_buffer_1_next;
+                tx_buffer_0 <= tx_buffer_0_next;
             end if;
         end if;
     end process refresh_state;
 
     tx_end_of_data <= std_logic_vector(tx_buffer_size_counter) & "000";
+    tx_buffer <= tx_buffer_10 & tx_buffer_9 & tx_buffer_8 & tx_buffer_7 & tx_buffer_6 
+                & tx_buffer_5 & tx_buffer_4 & tx_buffer_3 & tx_buffer_2 & tx_buffer_1 & tx_buffer_0;
 
+    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer)
+    transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer)
     transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data)
     begin
         case state is
@@ -190,30 +214,109 @@ begin
         end if;
     end process set_next_tx_buffer_size_counter;
 
-    -- update the buffer pointer where the next word will be written to
-    set_next_tx_buffer_ptr : process(state, tx_buffer_ptr, buffer_strobe)
+    -- update the tx buffers
+    set_next_tx_buffer_10 : process(tx_buffer_10, tx_buffer_size_counter, parallel_in, buffer_strobe)
     begin
-        if (buffer_strobe = '1') then
-            -- the buffer strobe is active, and we are not idling, decrement the buffer pointer
-            -- in full words. The buffer pointer is -1 when the buffer is full.
-            tx_buffer_ptr_next <= tx_buffer_ptr - 8;
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 11) then
+            tx_buffer_10_next <= parallel_in(2 downto 0);
         else
-            -- otherwise, reset the buffer pointer
-            tx_buffer_ptr_next <= TX_BUFFER_MAX_PADDING;
+            tx_buffer_10_next <= tx_buffer_10;
         end if;
-    end process set_next_tx_buffer_ptr;
+    end process set_next_tx_buffer_10;
 
-    -- update the buffer and write new data
-    set_next_tx_buffer : process(tx_buffer, tx_buffer_ptr, parallel_in, buffer_strobe)
-        variable tx_buffer_tmp : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
+    set_next_tx_buffer_9 : process(tx_buffer_9, tx_buffer_size_counter, parallel_in, buffer_strobe)
     begin
         tx_buffer_tmp := tx_buffer;
+        if (buffer_strobe = '1') then
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 10) then
+            tx_buffer_9_next <= parallel_in;
+        else
+            tx_buffer_9_next <= tx_buffer_9;
+        tx_buffer_tmp := tx_buffer;
         if (buffer_strobe = '1' and tx_buffer_ptr /= -1) then
-            -- if the buffer strobe is active, write the new data to the buffer
-            tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr - 7) := parallel_in;
         end if;
-        tx_buffer_next <= tx_buffer_tmp;
-    end process set_next_tx_buffer;
+    end process set_next_tx_buffer_9;
+
+    set_next_tx_buffer_8 : process(tx_buffer_8, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 9) then
+            tx_buffer_8_next <= parallel_in;
+        else
+            tx_buffer_8_next <= tx_buffer_8;
+        end if;
+    end process set_next_tx_buffer_8;
+
+    set_next_tx_buffer_7 : process(tx_buffer_7, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 8) then
+            tx_buffer_7_next <= parallel_in;
+        else
+            tx_buffer_7_next <= tx_buffer_7;
+        end if;
+    end process set_next_tx_buffer_7;
+
+    set_next_tx_buffer_6 : process(tx_buffer_6, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 7) then
+            tx_buffer_6_next <= parallel_in;
+        else
+            tx_buffer_6_next <= tx_buffer_6;
+        end if;
+    end process set_next_tx_buffer_6;
+
+    set_next_tx_buffer_5 : process(tx_buffer_5, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 6) then
+            tx_buffer_5_next <= parallel_in;
+        else
+            tx_buffer_5_next <= tx_buffer_5;
+        end if;
+    end process set_next_tx_buffer_5;
+
+    set_next_tx_buffer_4 : process(tx_buffer_4, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 5) then
+            tx_buffer_4_next <= parallel_in;
+        else
+            tx_buffer_4_next <= tx_buffer_4;
+        end if;
+    end process set_next_tx_buffer_4;
+
+    set_next_tx_buffer_3 : process(tx_buffer_3, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 4) then
+            tx_buffer_3_next <= parallel_in;
+        else
+            tx_buffer_3_next <= tx_buffer_3;
+        end if;
+    end process set_next_tx_buffer_3;
+
+    set_next_tx_buffer_2 : process(tx_buffer_2, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 3) then
+            tx_buffer_2_next <= parallel_in;
+        else
+            tx_buffer_2_next <= tx_buffer_2;
+        end if;
+    end process set_next_tx_buffer_2;
+
+    set_next_tx_buffer_1 : process(tx_buffer_1, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 2) then
+            tx_buffer_1_next <= parallel_in;
+        else
+            tx_buffer_1_next <= tx_buffer_1;
+        end if;
+    end process set_next_tx_buffer_1;
+
+    set_next_tx_buffer_0 : process(tx_buffer_0, tx_buffer_size_counter, parallel_in, buffer_strobe)
+    begin
+        if (buffer_strobe = '1' and tx_buffer_size_counter = 1) then
+            tx_buffer_0_next <= parallel_in;
+        else
+            tx_buffer_0_next <= tx_buffer_0;
+        end if;
+    end process set_next_tx_buffer_0;
 
     -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
     set_stuffing_params : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing)
