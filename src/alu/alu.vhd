@@ -410,7 +410,7 @@ begin
     set_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b, crc_out, crc_done)
     begin
         if (state = s_crc_busy and crc_done) then
-            result <= signed(resize(unsigned(crc_out), 16));
+            result <= signed("0" & crc_out);
         else
             -- we are in s_idle or s_can_transmitting state
             -- CRC output won't conflict with the result buffer
