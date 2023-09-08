@@ -188,7 +188,7 @@ begin
     end process set_next_tx_buffer_ptr;
 
     -- update the buffer and write new data
-    set_next_tx_buffer : process(state, tx_buffer, tx_buffer_ptr, parallel_in, buffer_strobe)
+    set_next_tx_buffer : process(tx_buffer, tx_buffer_ptr, parallel_in, buffer_strobe)
         variable tx_buffer_tmp : std_logic_vector(TX_BUFFER_MAX downto 0);
     begin
         tx_buffer_tmp := tx_buffer;

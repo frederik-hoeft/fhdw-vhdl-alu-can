@@ -12,7 +12,6 @@ entity alu is port (
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
     fhigh : out std_logic_vector(7 downto 0);
-    -- TODO: crc strobe
     cout, equal, ov, sign, crc_busy, ready, can, can_busy : out std_logic);
 end alu;
 
@@ -142,7 +141,7 @@ begin
         busy => can_busy_out);
 
     -- process for storing the command and the input values
-    snap_inputs : process(clk, state)
+    snap_inputs : process(clk)
     begin
         if rising_edge(clk) then
             reg_cmd <= cmd;
@@ -266,11 +265,11 @@ begin
         end if;
     end process;
 
-    set_crc_busy : process(state, reg_cmd, crc_done, can_header_pointer)
+    set_crc_busy : process(state, reg_cmd, crc_done)
     begin
         if (((state = s_crc_busy or state = s_can_crc_busy) and not crc_done) -- calculating CRC right now and not done by the end of the cycle
             or ((state = s_idle or state = s_can_transmitting) and (reg_cmd = "1101" or reg_cmd = "1110")) -- CRC calculation requested by user, starting next cycle
-            or state = s_can_buffering) then -- CRC calculation requested by CAN, starting next cycle
+            or state = s_can_buffering) then -- CAN header is being buffered, CRC calculation is running in parallel 
             crc_busy_corrected <= '1';
         else
             crc_busy_corrected <= '0';
@@ -282,14 +281,15 @@ begin
     crc_done_next_cycle <= crc_pdata + 1 = crc_pend;
     
     -- ready is low-active (i.e. ready = '0' means ready)
-    set_ready : process(state, reg_cmd, crc_done_next_cycle, crc_busy_corrected, reg_a, reg_b)
+    set_ready : process(state, reg_cmd, crc_done_next_cycle, reg_a, reg_b)
     begin
-        if ((state = s_idle and reg_cmd = "1110") or state = s_can_buffering) then
-            ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
-        elsif (state = s_crc_busy and crc_done_next_cycle) then
+        if (state = s_crc_busy and crc_done_next_cycle) then
             -- whether we are to accept a new command depends on whether the CRC result will be ready by the end of the next cycle
             ready <= '1';
         elsif ((state = s_idle or state = s_can_transmitting) and reg_cmd = "1101" and reg_a = reg_b) then
+            -- it is also possible that only one byte is to be CRC'd
+            -- in this case, the CRC result will be ready by the end of the next cycle, 
+            -- even though we are not even in s_crc_busy state yet
             ready <= '1';
         else
             ready <= '0';
@@ -320,7 +320,7 @@ begin
         end if;
     end process;
 
-    set_can_buffer_strobe : process(state, reg_cmd, crc_done)
+    set_can_buffer_strobe : process(state, reg_cmd)
     begin
         if (state = s_idle and reg_cmd = "1110") then
             can_buffer_strobe <= '1'; -- start buffering (next cycle will start pushing data to the CAN PHY)
@@ -416,9 +416,6 @@ begin
     begin
         if (state = s_crc_busy and crc_done) then
             result <= signed(resize(unsigned(crc_out), 16));
-        elsif (state = s_can_buffering) then
-            -- TODO: check if we can use this time to do something else
-            result <= (others => '0');
         else
             -- we are in s_idle or s_can_transmitting state
             -- CRC output won't conflict with the result buffer
