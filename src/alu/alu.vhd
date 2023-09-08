@@ -282,9 +282,9 @@ begin
     crc_done_next_cycle <= crc_pdata + 1 = crc_pend;
     
     -- ready is low-active (i.e. ready = '0' means ready)
-    set_ready : process(state, crc_done_next_cycle, crc_busy_corrected)
+    set_ready : process(state, reg_cmd, crc_done_next_cycle, crc_busy_corrected)
     begin
-        if (state = s_can_buffering) then
+        if ((state = s_idle and reg_cmd = "1110") or state = s_can_buffering) then
             ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
         elsif (crc_done_next_cycle) then
             -- whether we are to accept a new command depends on whether the CRC result will be ready by the end of the next cycle
