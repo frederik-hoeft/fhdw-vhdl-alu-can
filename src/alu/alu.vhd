@@ -257,7 +257,7 @@ begin
             -- wait for the CAN header to be buffered, hold addresses, and initialize CRC
             crc_pnext <= crc_pdata;
             crc_pend_next <= crc_pend;
-            crc_next <= crc_current; -- keep CRC (from header calculation)
+            crc_next <= crc_out; -- keep CRC (from header calculation)
         else
             -- reset CRC
             crc_pnext <= (others => '0');
