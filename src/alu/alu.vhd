@@ -232,7 +232,7 @@ begin
         end case;
     end process transition;
 
-    set_crc_next: process(state)
+    set_crc_next: process(state, crc_out)
     begin
         if (state = s_crc_busy or state = s_can_crc_busy or state = s_can_buffering) then
             -- feed the CRC module with the ongoing CRC calculation as long as we are in the CRC calculation state
@@ -243,7 +243,7 @@ begin
         end if;
     end process;
 
-    set_crc_end_pointer_next: process(state, reg_cmd, reg_a, reg_b)
+    set_crc_end_pointer_next: process(state, reg_cmd, reg_a, reg_b, crc_end_pointer)
     begin
         if (state = s_idle and reg_cmd = "1110") then
             -- snap CRC end address, capping at 8 bytes

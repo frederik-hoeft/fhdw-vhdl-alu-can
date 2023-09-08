@@ -1,4 +1,4 @@
 
 #Created by Constraints Editor (xc3s500e-vq100-4) - 2023/09/05
 NET "clk" TNM_NET = clk;
-TIMESPEC TS_CLK = PERIOD "clk" 7.5 ns HIGH 50%; # 6 possible for ALU, CAN can only do 10.125
+TIMESPEC TS_CLK = PERIOD "clk" 7.0 ns HIGH 50%; # 6 possible for ALU, CAN can only do 10.125
