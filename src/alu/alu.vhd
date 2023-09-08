@@ -80,7 +80,7 @@ architecture alu_beh of alu is
 
     signal can_arbitration_buffer, can_arbitration_buffer_next : std_logic_vector(11 downto 0) := (others => '0');
 
-    signal can_header : std_logic_vector(18 downto 0);
+    signal can_header : std_logic_vector(23 downto 0);
 
     -- registers for storing the input values
     signal reg_a, reg_b : signed(7 downto 0) := (others => '0');
@@ -101,8 +101,8 @@ architecture alu_beh of alu is
     signal crc_done_next_cycle : boolean;
 
     -- how many words of the CAN header have been buffered so far
-    signal can_header_pointer : integer range 0 to 19 := 0;
-    signal can_header_pointer_next : integer range 0 to 19 := 0;
+    signal can_header_pointer : integer range 23 downto 0 := 23;
+    signal can_header_pointer_next : integer range 23 downto 0 := 23;
     constant CAN_HEADER_LENGTH : integer := 19;
     -- CAN we start another CAN transmission? (pun intended)
     signal can_busy_out : std_logic := '0';
@@ -369,8 +369,8 @@ begin
     end process set_reg_can_dlc;
     
     -- concatenate the CAN arbitration field and the CAN header
-    --            SOF          ID + RTR       IDE + R0    DLC
-    can_header <= "0" & can_arbitration_buffer & "00" & can_dlc;
+    --            PADDING   SOF          ID + RTR       IDE + R0    DLC
+    can_header <= "00000" & "0" & can_arbitration_buffer & "00" & can_dlc;
 
     set_can_busy: process(state, reg_cmd, can_busy_out)
     begin
