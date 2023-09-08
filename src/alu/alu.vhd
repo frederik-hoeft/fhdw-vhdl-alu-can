@@ -207,7 +207,7 @@ begin
                     next_state <= s_crc_busy;
                 end if;
             when s_can_buffering =>
-                if (can_header_pointer < 8) then
+                if (can_header_pointer = 7) then
                     next_state <= s_can_crc_busy;
                 else
                     next_state <= s_can_buffering;

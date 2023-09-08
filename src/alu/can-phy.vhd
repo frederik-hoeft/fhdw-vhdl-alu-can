@@ -44,7 +44,7 @@ architecture behavioral of can_phy is
     -- the buffer size counter is 0 when the buffer is full
     constant TX_BUFFER_SIZE_COUNTER_MAX : integer := 11;
     signal tx_buffer_size_counter, tx_buffer_size_counter_next : unsigned(3 downto 0) := to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
-    signal tx_end_of_data : std_logic_vector(8 downto 0);
+    signal tx_end_of_data : std_logic_vector(6 downto 0);
 
     -- the data bit pointer points to the next bit to be transmitted
     -- also starting at the top of the buffer, and going down
@@ -104,7 +104,7 @@ begin
 
     tx_end_of_data <= std_logic_vector(tx_buffer_size_counter) & "000";
 
-    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer)
+    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data)
     begin
         case state is
             when idle =>
@@ -121,7 +121,7 @@ begin
                 end if;
             when tx_data =>
                 -- if we are at the end of the buffer, go to tx_crc
-                if (std_logic_vector(tx_bit_pointer) = tx_end_of_data) then
+                if (std_logic_vector(to_unsigned(tx_bit_pointer, tx_end_of_data'length)) = tx_end_of_data) then
                     next_state <= tx_crc;
                 else
                     next_state <= tx_data;
@@ -208,7 +208,7 @@ begin
         variable tx_buffer_tmp : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
     begin
         tx_buffer_tmp := tx_buffer;
-        if (buffer_strobe = '1') then
+        if (buffer_strobe = '1' and tx_buffer_ptr /= -1) then
             -- if the buffer strobe is active, write the new data to the buffer
             tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr - 7) := parallel_in;
         end if;
