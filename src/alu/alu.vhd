@@ -377,7 +377,7 @@ begin
         end if;
     end process set_can_busy;
 
-    set_ram_addr: process(state, next_state, reg_cmd, reg_a, reg_b, crc_pdata)
+    set_ram_addr: process(state, reg_cmd, reg_a, reg_b, crc_pdata)
     begin
         if (state = s_idle or state = s_can_transmitting) then
             if (reg_cmd = "1100") then
@@ -389,7 +389,7 @@ begin
             end if;
         elsif (state = s_can_buffering) then
             ram_addr <= std_logic_vector(crc_pdata);
-        elsif (state = s_crc_busy or next_state = s_can_crc_busy) then
+        elsif (state = s_crc_busy or state = s_can_crc_busy) then
             ram_addr <= std_logic_vector(crc_pdata + 1);
         else
             ram_addr <= (others => '0');
