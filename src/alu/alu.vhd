@@ -269,8 +269,8 @@ begin
     set_crc_busy : process(state, reg_cmd, crc_done, can_header_pointer)
     begin
         if (((state = s_crc_busy or state = s_can_crc_busy) and not crc_done) -- calculating CRC right now and not done by the end of the cycle
-            or ((state = s_idle or state = s_can_transmitting) and reg_cmd = "1101") -- CRC calculation requested by user, starting next cycle
-            or (state = s_can_buffering and can_header_pointer = CAN_HEADER_LENGTH)) then -- CRC calculation requested by CAN, starting next cycle
+            or ((state = s_idle or state = s_can_transmitting) and (reg_cmd = "1101" or reg_cmd = "1110")) -- CRC calculation requested by user, starting next cycle
+            or state = s_can_buffering) then -- CRC calculation requested by CAN, starting next cycle
             crc_busy_corrected <= '1';
         else
             crc_busy_corrected <= '0';
@@ -282,12 +282,14 @@ begin
     crc_done_next_cycle <= crc_pdata + 1 = crc_pend;
     
     -- ready is low-active (i.e. ready = '0' means ready)
-    set_ready : process(state, reg_cmd, crc_done_next_cycle, crc_busy_corrected)
+    set_ready : process(state, reg_cmd, crc_done_next_cycle, crc_busy_corrected, reg_a, reg_b)
     begin
         if ((state = s_idle and reg_cmd = "1110") or state = s_can_buffering) then
             ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
         elsif (state = s_crc_busy and crc_done_next_cycle) then
             -- whether we are to accept a new command depends on whether the CRC result will be ready by the end of the next cycle
+            ready <= '1';
+        elsif ((state = s_idle or state = s_can_transmitting) and reg_cmd = "1101" and reg_a = reg_b) then
             ready <= '1';
         else
             ready <= '0';
@@ -370,7 +372,15 @@ begin
     --            SOF          ID + RTR       IDE + R0    DLC
     can_header <= "0" & can_arbitration_buffer & "00" & can_dlc;
 
-    can_busy <= can_busy_out;
+    set_can_busy: process(state, reg_cmd, can_busy_out)
+    begin
+        if (state = s_idle and reg_cmd = "1110") then
+            -- prevent another CAN operation from being started
+            can_busy <= '1';
+        else
+            can_busy <= can_busy_out;
+        end if;
+    end process set_can_busy;
 
     set_ram_addr: process(state, next_state, reg_cmd, reg_a, reg_b, crc_pdata)
     begin

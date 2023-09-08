@@ -89,10 +89,6 @@
       <obj_property name="ElementShortName">sign[0:0]</obj_property>
       <obj_property name="ObjectShortName">sign[0:0]</obj_property>
    </wvobject>
-   <wvobject fp_name="/alu_tb/cb" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">cb[0:0]</obj_property>
-      <obj_property name="ObjectShortName">cb[0:0]</obj_property>
-   </wvobject>
    <wvobject fp_name="/alu_tb/ready" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">ready[0:0]</obj_property>
       <obj_property name="ObjectShortName">ready[0:0]</obj_property>
@@ -120,6 +116,10 @@
       <obj_property name="ObjectShortName">ram_do[7:0]</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="CustomSignalColor">#a0a0a4</obj_property>
+   </wvobject>
+   <wvobject fp_name="/alu_tb/uut/crc_busy" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">crc_busy</obj_property>
+      <obj_property name="ObjectShortName">crc_busy</obj_property>
    </wvobject>
    <wvobject fp_name="/alu_tb/uut/can_arbitration" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">can_arbitration[11:0]</obj_property>
