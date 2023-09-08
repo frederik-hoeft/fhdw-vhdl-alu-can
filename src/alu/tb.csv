@@ -401,7 +401,7 @@ Prepare 1,1,0,mov,X,0,,X,X,X,0,X,X,0,0,0,1
 CAN Wikipedia frame,0,0,can,0b000000101000,0,,X,X,X,1,X,X,1,1,1,1
 buffering 2,0,0,nop,X,0,,X,X,X,1,X,X,1,1,1,1
 buffering 3,0,0,nop,X,0,,X,X,X,1,X,X,1,1,1,1
-CAN CRC data,0,0,nop,X,0,,X,X,X,1,X,X,0,1,1,1
+CAN CRC data,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN NOP,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN SOF,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,0
 CAN ID10,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,0
