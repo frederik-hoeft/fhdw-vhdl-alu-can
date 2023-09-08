@@ -265,8 +265,8 @@ Prepare CAN: o,0x6f,36,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Prepare CAN:  ,0x20,37,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Prepare CAN: :,0x3a,38,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Prepare CAN: D,0x44,39,mov,X,0,,X,X,0,0,0,X,0,0,0,1
-Dispatch via CAN 256,32,39,can,0b000100000000,0,,X,X,0,0,0,X,0,1,0,1
-buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
+Dispatch via CAN 256,32,39,can,0b000100000000,0,,X,X,0,0,0,X,1,1,0,1
+buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
 buffer header 3,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
 CAN CRC: H,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
 CAN CRC: e,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
@@ -391,6 +391,6 @@ CAN EOF0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS2,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS1,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,0,1
-Dispatch CAN,64,64,can,0b111111111110,0,,X,X,0,1,0,X,0,1,0,1
-buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
+Dispatch CAN,64,64,can,0b111111111110,0,,X,X,0,1,0,X,1,1,0,1
+buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
 reset,0,0,nop,X,1,,0,0,0,1,0,0,0,0,0,1
