@@ -107,7 +107,7 @@ architecture alu_beh of alu is
     -- how many words of the CAN header have been buffered so far
     signal can_header_pointer : integer range CAN_HEADER_MAX downto 0 := CAN_HEADER_MAX;
     signal can_header_pointer_next : integer range CAN_HEADER_MAX downto 0 := CAN_HEADER_MAX;
-    constant CAN_HEADER_LENGTH : integer := 19;
+
     -- CAN we start another CAN transmission? (pun intended)
     signal can_busy_out : std_logic := '0';
     signal can_parallel_in : std_logic_vector(7 downto 0) := (others => '0');

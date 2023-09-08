@@ -31,16 +31,20 @@ architecture behavioral of can_phy is
     -- up to 64 bits data
     -- (15 bits tx_crc stored separately)
     -- ACK, IFS, etc via state machine
+    constant TX_BUFFER_MAX_PADDING : integer := 87;
     constant TX_BUFFER_MAX : integer := 82;
-    constant TX_BUFFER_WORD_START : integer := TX_BUFFER_MAX - 3;
 
-    signal tx_buffer : std_logic_vector(TX_BUFFER_MAX downto 0);
-    signal tx_buffer_next : std_logic_vector(TX_BUFFER_MAX downto 0);
+    signal tx_buffer : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
+    signal tx_buffer_next : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
     -- the buffer pointer points to the next word to be written to
     -- starting at the top of the buffer, and going down
-    -- the buffer pointer is -1 when the buffer is full
-    signal tx_buffer_ptr : integer range TX_BUFFER_MAX downto -1 := 0;
-    signal tx_buffer_ptr_next : integer range TX_BUFFER_MAX downto -1 := 0;
+    signal tx_buffer_ptr : integer range TX_BUFFER_MAX_PADDING downto 0 := 0;
+    signal tx_buffer_ptr_next : integer range TX_BUFFER_MAX_PADDING downto 0 := 0;
+
+    -- the buffer size counter is 0 when the buffer is full
+    constant TX_BUFFER_SIZE_COUNTER_MAX : integer := 11;
+    signal tx_buffer_size_counter, tx_buffer_size_counter_next : unsigned(3 downto 0) := to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
+    signal tx_end_of_data : std_logic_vector(8 downto 0);
 
     -- the data bit pointer points to the next bit to be transmitted
     -- also starting at the top of the buffer, and going down
@@ -78,11 +82,12 @@ begin
                 state <= idle;
                 tx_crc_buffer <= (others => '0');
                 tx_buffer <= (others => '0');
-                tx_buffer_ptr <= TX_BUFFER_MAX;
+                tx_buffer_ptr <= TX_BUFFER_MAX_PADDING;
                 tx_bit_pointer <= TX_BUFFER_MAX;
                 tx_crc_bit_pointer <= TX_CRC_BUFFER_MAX;
                 stuffing_counter <= 0;
                 stuffing_bit <= '1';
+                tx_buffer_size_counter <= to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
             else
                 state <= next_state;
                 tx_crc_buffer <= tx_crc_buffer_next;
@@ -92,9 +97,12 @@ begin
                 tx_crc_bit_pointer <= tx_crc_bit_pointer_next;
                 stuffing_counter <= stuffing_counter_next;
                 stuffing_bit <= stuffing_bit_next;
+                tx_buffer_size_counter <= tx_buffer_size_counter_next;
             end if;
         end if;
     end process refresh_state;
+
+    tx_end_of_data <= std_logic_vector(tx_buffer_size_counter) & "000";
 
     transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer)
     begin
@@ -112,7 +120,8 @@ begin
                     next_state <= tx_data;
                 end if;
             when tx_data =>
-                if (tx_bit_pointer = 0 or tx_bit_pointer - 1 = tx_buffer_ptr) then
+                -- if we are at the end of the buffer, go to tx_crc
+                if (std_logic_vector(tx_bit_pointer) = tx_end_of_data) then
                     next_state <= tx_crc;
                 else
                     next_state <= tx_data;
@@ -166,40 +175,42 @@ begin
         end if;
     end process set_next_crc;
 
+    set_next_tx_buffer_size_counter : process(state, tx_buffer_size_counter, buffer_strobe)
+    begin
+        if (buffer_strobe = '1') then
+            -- if the buffer strobe is active, decrement the buffer size counter
+            -- we trust the user to not send more data than the buffer can hold
+            tx_buffer_size_counter_next <= tx_buffer_size_counter - 1;
+        elsif (state = idle) then
+            -- if we are idling, reset the buffer size counter
+            tx_buffer_size_counter_next <= to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
+        else
+            -- otherwise, hold the current value
+            tx_buffer_size_counter_next <= tx_buffer_size_counter;
+        end if;
+    end process set_next_tx_buffer_size_counter;
+
     -- update the buffer pointer where the next word will be written to
     set_next_tx_buffer_ptr : process(state, tx_buffer_ptr, buffer_strobe)
     begin
-        if (state = idle and buffer_strobe = '1') then
-            -- header is 19 bits, word size is 8 bits
-            -- so the first word contains only 3 bits of actual data
-            -- after that, the buffer pointer is decremented by full words
-            tx_buffer_ptr_next <= TX_BUFFER_WORD_START;
-        elsif (buffer_strobe = '1' and tx_buffer_ptr > 0) then
+        if (buffer_strobe = '1') then
             -- the buffer strobe is active, and we are not idling, decrement the buffer pointer
             -- in full words. The buffer pointer is -1 when the buffer is full.
             tx_buffer_ptr_next <= tx_buffer_ptr - 8;
-        elsif (state = idle) then
-            -- if we are idling, reset the buffer pointer
-            tx_buffer_ptr_next <= TX_BUFFER_MAX;
         else
-            -- otherwise, hold the current value
-            tx_buffer_ptr_next <= tx_buffer_ptr;
+            -- otherwise, reset the buffer pointer
+            tx_buffer_ptr_next <= TX_BUFFER_MAX_PADDING;
         end if;
     end process set_next_tx_buffer_ptr;
 
     -- update the buffer and write new data
     set_next_tx_buffer : process(tx_buffer, tx_buffer_ptr, parallel_in, buffer_strobe)
-        variable tx_buffer_tmp : std_logic_vector(TX_BUFFER_MAX downto 0);
+        variable tx_buffer_tmp : std_logic_vector(TX_BUFFER_MAX_PADDING downto 0);
     begin
         tx_buffer_tmp := tx_buffer;
         if (buffer_strobe = '1') then
-            if (tx_buffer_ptr = TX_BUFFER_MAX) then
-                -- first word, only 3 bits of data are written to the buffer
-                tx_buffer_tmp(TX_BUFFER_MAX downto TX_BUFFER_WORD_START + 1) := parallel_in(2 downto 0);
-            elsif (tx_buffer_ptr >= 7) then
-                -- after the first word, write the full 8 bits
-                tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr - 7) := parallel_in;
-            end if;
+            -- if the buffer strobe is active, write the new data to the buffer
+            tx_buffer_tmp(tx_buffer_ptr downto tx_buffer_ptr - 7) := parallel_in;
         end if;
         tx_buffer_next <= tx_buffer_tmp;
     end process set_next_tx_buffer;
@@ -228,12 +239,9 @@ begin
             if (stuffing_counter = 4) then
                 -- if we are stuffing, delay the transmission of the next bit
                 tx_bit_pointer_next <= tx_bit_pointer;
-            elsif (tx_bit_pointer > 0) then
-                -- otherwise, decrement the pointer if we are not at the end of the buffer
-                tx_bit_pointer_next <= tx_bit_pointer - 1;
             else
-                -- if we are at the end of the buffer, reset the pointer
-                tx_bit_pointer_next <= TX_BUFFER_MAX;
+                -- otherwise, decrement the pointer
+                tx_bit_pointer_next <= tx_bit_pointer - 1;
             end if;
         else
             -- if we are not transmitting data, reset the pointer
@@ -248,12 +256,9 @@ begin
             if (stuffing_counter = 4) then
                 -- if we are stuffing, delay the transmission of the next bit
                 tx_crc_bit_pointer_next <= tx_crc_bit_pointer;
-            elsif (tx_crc_bit_pointer > 0) then
-                -- otherwise, decrement the pointer if we are not at the end of the tx_crc
-                tx_crc_bit_pointer_next <= tx_crc_bit_pointer - 1;
             else
-                -- if we are at the end of the tx_crc, reset the pointer
-                tx_crc_bit_pointer_next <= TX_CRC_BUFFER_MAX;
+                -- otherwise, decrement the pointer
+                tx_crc_bit_pointer_next <= tx_crc_bit_pointer - 1;
             end if;
         else
             -- if we are not transmitting tx_crc, reset the pointer
