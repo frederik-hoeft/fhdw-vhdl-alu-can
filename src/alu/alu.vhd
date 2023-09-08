@@ -127,7 +127,7 @@ begin
     -- instantiate the CRC-15 module
     crc : crc15 port map(
         crcIn => crc_current,
-        data => ram_do,
+        data => can_parallel_in,
         crcOut => crc_out);
 
     -- instantiate the CAN PHY module
@@ -246,7 +246,7 @@ begin
             else
                 crc_pend_next <= unsigned(reg_b);
             end if;
-            -- initialize CRC
+            -- initialize CRC and start CRC calculation of CAN header immediately
             crc_next <= (others => '0'); -- reset CRC IV
         elsif (state = s_crc_busy or state = s_can_crc_busy) then
             -- increment CRC address, update CRC, and keep end address
@@ -257,7 +257,7 @@ begin
             -- wait for the CAN header to be buffered, hold addresses, and initialize CRC
             crc_pnext <= crc_pdata;
             crc_pend_next <= crc_pend;
-            crc_next <= (others => '0'); -- reset CRC IV
+            crc_next <= crc_current; -- keep CRC (from header calculation)
         else
             -- reset CRC
             crc_pnext <= (others => '0');
