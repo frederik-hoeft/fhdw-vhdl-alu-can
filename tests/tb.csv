@@ -1,6 +1,6 @@
 FORMAT:,F::prefix:8,F::prefix:8,F::lut:4->command_lut.json,F::prefix:12,,,F::prefix:8,F::prefix:8,,,,,,,,
 PINS:,a,b,instruction,can arbitration,reset,,result_high,result_low,carry,equal,overflow,sign,crc_busy,not_ready,can_busy,can_output
-reset,0,0,X,X,1,,0,0,0,X,0,0,0,0,0,1
+reset,0,0,nop,X,1,,0,0,0,X,0,0,0,0,0,1
 Add,3,4,add,X,0,,X,7,0,0,0,0,0,0,0,1
 Mov 'A' to 0,0x41,0,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Mov 'B' to 1,0x42,1,mov,X,0,,X,X,0,0,0,X,0,0,0,1
@@ -104,7 +104,7 @@ CAN EOF1,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
 CAN EOF0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
 CAN IFS2,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
 CAN IFS1,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
-CAN IFS0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,0,1
+CAN IFS0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
 ADD,8,8,add,X,0,,X,16,0,1,0,0,0,0,0,1
 ADD,127,1,add,X,0,,X,128,1,0,1,1,0,0,0,1
 ADD,127,127,add,X,0,,X,254,1,1,1,1,0,0,0,1
@@ -393,7 +393,8 @@ CAN EOF1,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN EOF0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS2,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS1,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
-CAN IFS0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,0,1
+CAN IFS0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
+nop,0,0,nop,X,0,,X,X,X,1,X,X,0,0,0,1
 Dispatch CAN,64,64,can,0b111111111110,0,,X,X,0,1,0,X,1,0,1,1
 buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
 reset,0,0,nop,X,1,,0,0,0,1,0,0,0,0,0,1
@@ -460,4 +461,5 @@ CAN EOF1,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN EOF0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS2,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
 CAN IFS1,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
-CAN IFS0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,0,1
+CAN IFS0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,1,1
+nop,0,0,nop,X,0,,X,X,X,1,X,X,0,0,0,1
