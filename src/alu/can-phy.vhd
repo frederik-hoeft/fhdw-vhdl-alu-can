@@ -126,9 +126,7 @@ begin
     tx_buffer <= tx_buffer_10 & tx_buffer_9 & tx_buffer_8 & tx_buffer_7 & tx_buffer_6 
                 & tx_buffer_5 & tx_buffer_4 & tx_buffer_3 & tx_buffer_2 & tx_buffer_1 & tx_buffer_0;
 
-    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer)
     transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer)
-    transition : process(state, buffer_strobe, tx_buffer_ptr, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data)
     begin
         case state is
             when idle =>
@@ -226,14 +224,10 @@ begin
 
     set_next_tx_buffer_9 : process(tx_buffer_9, tx_buffer_size_counter, parallel_in, buffer_strobe)
     begin
-        tx_buffer_tmp := tx_buffer;
-        if (buffer_strobe = '1') then
         if (buffer_strobe = '1' and tx_buffer_size_counter = 10) then
             tx_buffer_9_next <= parallel_in;
         else
             tx_buffer_9_next <= tx_buffer_9;
-        tx_buffer_tmp := tx_buffer;
-        if (buffer_strobe = '1' and tx_buffer_ptr /= -1) then
         end if;
     end process set_next_tx_buffer_9;
 
