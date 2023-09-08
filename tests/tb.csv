@@ -1,25 +1,25 @@
 FORMAT:,F::prefix:8,F::prefix:8,F::lut:4->command_lut.json,F::prefix:12,,,F::prefix:8,F::prefix:8,,,,,,,,
 PINS:,a,b,instruction,can arbitration,reset,,result_high,result_low,carry,equal,overflow,sign,crc_busy,not_ready,can_busy,can_output
 reset,0,0,X,X,1,,0,0,0,X,0,0,0,0,0,1
-Add,3,4,add,X,0,,0,7,0,0,0,0,0,0,0,1
-Mov 'A' to 0,0x41,0,mov,X,0,,0,0,0,0,0,X,0,0,0,1
-Mov 'B' to 1,0x42,1,mov,X,0,,0,0,0,0,0,X,0,0,0,1
-Mov 'C' to 2,0x43,2,mov,X,0,,0,0,0,0,0,X,0,0,0,1
-Mov 'D' to 3,0x44,3,mov,X,0,,0,0,0,0,0,X,0,0,0,1
-CRC-15,0,3,crc,X,0,,X,X,0,0,0,X,1,1,0,1
-CRC-15,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-CRC-15,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-CRC-15,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-CRC-15,0,0,nop,X,0,,0x1b,0xf1,0,1,0,X,0,0,0,1
+Add,3,4,add,X,0,,X,7,0,0,0,0,0,0,0,1
+Mov 'A' to 0,0x41,0,mov,X,0,,X,X,0,0,0,X,0,0,0,1
+Mov 'B' to 1,0x42,1,mov,X,0,,X,X,0,0,0,X,0,0,0,1
+Mov 'C' to 2,0x43,2,mov,X,0,,X,X,0,0,0,X,0,0,0,1
+Mov 'D' to 3,0x44,3,mov,X,0,,X,X,0,0,0,X,0,0,0,1
+CRC-15,0,3,crc,X,0,,X,X,0,0,0,X,1,0,0,1
+(CRC busy) add,65,-64,add,X,0,,X,1,0,0,0,0,1,0,0,1
+(CRC busy) add,2,2,add,X,0,,X,4,0,1,0,0,1,0,0,1
+(CRC busy) sub,3,4,sub,X,0,,X,-1,1,0,0,1,1,1,0,1
+CRC result ready,0,0,nop,X,0,,0x1b,0xf1,0,1,0,X,0,0,0,1
 Add,12,13,add,X,0,,0,25,0,0,0,0,0,0,0,1
-Payload via CAN 20,0,3,can,0b000000101000,0,,X,X,0,0,0,X,0,1,0,1
+Payload via CAN 20,0,3,can,0b000000101000,0,,X,X,0,0,0,X,0,1,1,1
 buffering 2,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
-buffering 3,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
-crc A,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-crc B,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-crc C,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-crc D,0,0,nop,X,0,,0x1b,0xf1,0,1,0,X,0,0,1,1
-CAN NOP + ADD,1,1,add,X,0,,0,2,0,1,0,0,0,0,1,1
+buffering 3,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+(CAN crc A) mul,123,0,mul,X,0,,0,0,0,0,0,0,1,0,1,1
+(CAN crc B) shr,12,0,shr,X,0,,X,6,0,0,0,0,1,0,1,1
+(CAN crc C) neg,13,0,neg,X,0,,X,-13,1,0,0,1,1,0,1,1
+(CAN crc D) add,1,-1,add,X,0,,X,0,0,0,0,0,0,0,1,1
+CAN NOP + ADD,1,1,add,X,0,,X,2,0,1,0,0,0,0,1,1
 CAN SOF,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
 CAN ID10,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
 CAN ID9,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
@@ -224,10 +224,10 @@ nop,0,0,nop,X,0,,0,0,0,1,0,0,0,0,0,1
 mov ,0x43,16,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov ,0x52,17,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov ,0x43,18,mov,X,0,,X,X,0,0,0,X,0,0,0,1
-crc,16,18,crc,X,0,,X,X,0,0,0,X,1,1,0,1
-wait for crc,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait for crc,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait for crc,0,0,nop,X,0,,0x4d,0x5b,0,1,0,X,0,0,0,1
+crc,16,18,crc,X,0,,X,X,0,0,0,X,1,0,0,1
+wait for crc,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait for crc (add),3,3,add,X,0,,X,6,0,1,0,0,1,1,0,1
+CRC ready,0,0,nop,X,0,,0x4d,0x5b,0,1,0,X,0,0,0,1
 mov H,0x48,0,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov e,0x65,1,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov l,0x6c,2,mov,X,0,,X,X,0,0,0,X,0,0,0,1
@@ -242,21 +242,21 @@ mov d,0x64,10,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov ,0x20,11,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov :,0x3a,12,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 mov ),0x29,13,mov,X,0,,X,X,0,0,0,X,0,0,0,1
-CRC,0,13,crc,X,0,,X,X,0,0,0,X,1,1,0,1
+CRC,0,13,crc,X,0,,X,X,0,0,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+sub,123,0,sub,X,0,,X,123,0,0,0,0,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
+wait,0,0,nop,X,0,,X,X,0,1,0,X,1,0,0,1
 wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,X,X,0,1,0,X,1,1,0,1
-wait,0,0,nop,X,0,,0x7f,0xb5,0,1,0,X,0,0,0,1
+CRC ready,0,0,nop,X,0,,0x7f,0xb5,0,1,0,X,0,0,0,1
 Prepare CAN: H,0x48,32,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Prepare CAN: e,0x65,33,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Prepare CAN: l,0x6c,34,mov,X,0,,X,X,0,0,0,X,0,0,0,1
@@ -267,15 +267,15 @@ Prepare CAN: :,0x3a,38,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Prepare CAN: D,0x44,39,mov,X,0,,X,X,0,0,0,X,0,0,0,1
 Dispatch via CAN 256,32,39,can,0b000100000000,0,,X,X,0,0,0,X,0,1,0,1
 buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
-buffer header 3,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
-CAN CRC: H,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC: e,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC: l,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC: l,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC: o,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC:  ,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC: :,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
-CAN CRC: D,0,0,nop,X,0,,0x63,0x7a,0,1,0,X,0,0,1,1
+buffer header 3,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
+CAN CRC: H,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC: e,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC: l,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC: l,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC: o,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC:  ,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC: :,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+CAN CRC: D,0,0,nop,X,0,,X,X,0,1,0,X,0,0,1,1
 CAN Mealy to Moore,1,2,add,X,0,,X,3,0,0,0,0,0,0,1,1
 CAN SOF,4,-4,sub,X,0,,X,8,1,0,0,0,0,0,1,0
 CAN ID10,7,-100,am2,X,0,,-1,-186,0,0,0,1,0,0,1,0
