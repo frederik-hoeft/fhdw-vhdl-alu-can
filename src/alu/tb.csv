@@ -12,9 +12,9 @@ CRC-15,0,3,crc,X,0,,X,X,0,0,0,X,1,0,0,1
 (CRC busy) sub,3,4,sub,X,0,,X,-1,1,0,0,1,1,1,0,1
 CRC result ready,0,0,nop,X,0,,0x1b,0xf1,0,1,0,X,0,0,0,1
 Add,12,13,add,X,0,,0,25,0,0,0,0,0,0,0,1
-Payload via CAN 20,0,3,can,0b000000101000,0,,X,X,0,0,0,X,0,1,1,1
-buffering 2,0,0,nop,X,0,,X,X,0,1,0,X,0,1,1,1
-buffering 3,0,0,nop,X,0,,X,X,0,1,0,X,1,0,1,1
+Payload via CAN 20,0,3,can,0b000000101000,0,,X,X,0,0,0,X,1,1,1,1
+buffering 2,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
+buffering 3,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
 (CAN crc A) mul,123,0,mul,X,0,,0,0,0,0,0,0,1,0,1,1
 (CAN crc B) shr,12,0,shr,X,0,,X,6,0,0,0,0,1,0,1,1
 (CAN crc C) neg,13,0,neg,X,0,,X,-13,1,0,0,1,1,0,1,1
