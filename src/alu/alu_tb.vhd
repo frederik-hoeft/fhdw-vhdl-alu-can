@@ -18,7 +18,7 @@ architecture test_bench of alu_tb is
         can_arbitration : in std_logic_vector(11 downto 0);
         cmd : in std_logic_vector(3 downto 0);
         flow, fhigh : out std_logic_vector(7 downto 0);
-        cout, equal, ov, sign, cb, ready, can, can_busy : out std_logic);
+        cout, equal, ov, sign, crc_busy, ready, can, can_busy : out std_logic);
     end component;
 
     -- inputs
@@ -37,7 +37,7 @@ architecture test_bench of alu_tb is
     -- outputs
     signal flow : std_logic_vector(7 downto 0);
     signal fhigh : std_logic_vector(7 downto 0);
-    signal cout, equal, ov, sign, cb, ready, can, can_busy : std_logic_vector(0 downto 0);
+    signal cout, equal, ov, sign, crc_busy, ready, can, can_busy : std_logic_vector(0 downto 0);
 
     -- simulation
     signal DebugVariable : boolean:=true;
@@ -170,7 +170,7 @@ begin
         equal => equal(0),
         ov => ov(0),
         sign => sign(0),
-        cb => cb(0),
+        crc_busy => crc_busy(0),
         ready => ready(0),
         can => can(0),
         can_busy => can_busy(0)
@@ -286,11 +286,11 @@ begin
                     read(var_line, whitespace);
                     success := success and assert_equals(string2std_logic(expected_sign), sign, "sign");
 
-                    -- cb
+                    -- crc_busy
                     read(var_line, buffer_1);
                     expected_cb := buffer_1;
                     read(var_line, whitespace);
-                    success := success and assert_equals(string2std_logic(expected_cb), cb, "cb");
+                    success := success and assert_equals(string2std_logic(expected_cb), crc_busy, "crc_busy");
 
                     -- ready
                     read(var_line, buffer_1);
@@ -354,7 +354,7 @@ begin
             is_first_monitor_call <= false;
             write(var_line, "<STATUS> at <TIME> (@");
             write(var_line, clock_period);
-            write(var_line, "),,a,b,cmd,can_arbitration,reset,,flow(exp:act),fhigh(exp:act),cout(exp:act),equal(exp:act),ov(exp:act),sign(exp:act),cb(exp:act),ready(exp:act),can_busy(exp:act),can(exp:act)");
+            write(var_line, "),,a,b,cmd,can_arbitration,reset,,flow(exp:act),fhigh(exp:act),cout(exp:act),equal(exp:act),ov(exp:act),sign(exp:act),crc_busy(exp:act),ready(exp:act),can_busy(exp:act),can(exp:act)");
             writeline(protocol, var_line);
         end if;
         -- only log after first two clock cycles (one to allow for device to initialize
@@ -373,7 +373,7 @@ begin
                 v_equal := std_logic2string(equal);
                 v_ov := std_logic2string(ov);
                 v_sign := std_logic2string(sign);
-                v_cb := std_logic2string(cb);
+                v_cb := std_logic2string(crc_busy);
                 v_ready := std_logic2string(ready);
                 v_can_busy := std_logic2string(can_busy);
                 v_can := std_logic2string(can);

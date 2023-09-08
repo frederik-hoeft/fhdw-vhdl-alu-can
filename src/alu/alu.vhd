@@ -12,7 +12,8 @@ entity alu is port (
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
     fhigh : out std_logic_vector(7 downto 0);
-    cout, equal, ov, sign, cb, ready, can, can_busy : out std_logic);
+    -- TODO: crc strobe
+    cout, equal, ov, sign, crc_busy, ready, can, can_busy : out std_logic);
 end alu;
 
 architecture alu_beh of alu is
@@ -94,6 +95,11 @@ architecture alu_beh of alu is
 
     signal crc_done : boolean;
     signal crc_busy_corrected : std_logic;
+
+    -- if the CRC is done by the end of the next cycle, then we cannot allow
+    -- the next cycle to perform any operations, as the result buffer will be
+    -- overwritten by the CRC result
+    signal crc_done_next_cycle : boolean;
 
     -- how many words of the CAN header have been buffered so far
     signal can_header_pointer : integer range 0 to 19 := 0;
@@ -271,6 +277,21 @@ begin
         end if;
     end process;
 
+    crc_busy <= crc_busy_corrected;
+
+    crc_done_next_cycle <= crc_pdata + 1 = crc_pend;
+    
+    -- ready is low-active (i.e. ready = '0' means ready)
+    set_ready : process(state, reg_cmd, crc_busy_corrected)
+    begin
+        if (state = can_buffering) then
+            ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
+        else
+            -- whether we are to accept a new command depends on whether the CRC result will be ready by the end of the next cycle
+            ready <= crc_done_next_cycle;
+        end if;
+    end process;
+
     -- buffer the CAN arbitration field
     set_can_arbitration_buffer : process(state, reg_cmd, reg_can_arbitration, can_arbitration_buffer)
     begin
@@ -347,21 +368,6 @@ begin
     --            SOF          ID + RTR       IDE + R0    DLC
     can_header <= "0" & can_arbitration_buffer & "00" & can_dlc;
 
-    cb <= crc_busy_corrected;
-    
-    -- ready is low-active (i.e. ready = '0' means ready)
-    set_ready : process(state, reg_cmd, crc_busy_corrected)
-    begin
-        if (state = idle and reg_cmd = "1110") then
-            ready <= '1'; -- we are starting a CAN transmission
-        elsif (state = can_buffering) then
-            ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
-        else
-            -- whether we are ready or not depends on whether the CRC is busy
-            ready <= crc_busy_corrected;
-        end if;
-    end process;
-
     can_busy <= can_busy_out;
 
     set_ram_addr: process(state, next_state, reg_cmd, reg_a, reg_b, crc_pdata)
@@ -396,44 +402,44 @@ begin
 
     set_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b, crc_out)
     begin
-        case state is
-            when idle | can_transmitting =>
-                case reg_cmd is
-                    when "0000" => -- flow = a + b
-                        result <= a_exp + b_exp;
-                    when "0001" => -- flow = a - b
-                        result <= a_exp - b_exp;
-                    when "0010" => -- flow = (a + b) * 2
-                        result <= (a_exp + b_exp) sll 1; -- 16 bit OP & assuming big endian
-                    when "0011" => -- flow = (a + b) * 4
-                        result <= (a_exp + b_exp) sll 2; -- 16 bit OP & assuming big endian
-                    when "0100" => -- flow = -a
-                        result <= -a_exp;
-                    when "0101" => -- flow = a << 1
-                        result <= a_exp sll 1;
-                    when "0110" => -- flow = a >> 1
-                        result <= a_exp srl 1;
-                    when "0111" => -- flow = a <<< 1 (rotate left)
-                        result <= resize(reg_a rol 1, 16);
-                    when "1000" => -- flow = a >>> 1 (rotate right)
-                        result <= resize(reg_a ror 1, 16);
-                    when "1001" => -- flow = a * b
-                        result <= reg_a * reg_b;
-                    when "1010" => -- flow = ~(a & b) (bitwise nand)
-                        result <= a_exp nand b_exp;
-                    when "1011" => -- flow = a ^ b (bitwise xor)
-                        result <= a_exp xor b_exp;
-                    when others =>
-                        result <= (others => '0');
-                end case;
-            when crc_busy | can_crc_busy =>
-                result <= signed(resize(unsigned(crc_out), 16));
-            when can_buffering =>
-                result <= (others => '0');
-            when others =>
-                report "ALU result setter: UNKNOWN STATE" severity error;
-                result <= (others => '0');
-        end case;
+        if ((state = crc_busy or state = can_crc_busy) and crc_done) then
+            result <= signed(resize(unsigned(crc_out), 16));
+        elsif (state = can_buffering) then
+            -- TODO: check if we can use this time to do something else
+            result <= (others => '0');
+        else
+            -- we are in idle or can_transmitting state
+            -- CRC output won't conflict with the result buffer
+            -- so we can use the result buffer for other operations
+            case reg_cmd is
+                when "0000" => -- flow = a + b
+                    result <= a_exp + b_exp;
+                when "0001" => -- flow = a - b
+                    result <= a_exp - b_exp;
+                when "0010" => -- flow = (a + b) * 2
+                    result <= (a_exp + b_exp) sll 1; -- 16 bit OP & assuming big endian
+                when "0011" => -- flow = (a + b) * 4
+                    result <= (a_exp + b_exp) sll 2; -- 16 bit OP & assuming big endian
+                when "0100" => -- flow = -a
+                    result <= -a_exp;
+                when "0101" => -- flow = a << 1
+                    result <= a_exp sll 1;
+                when "0110" => -- flow = a >> 1
+                    result <= a_exp srl 1;
+                when "0111" => -- flow = a <<< 1 (rotate left)
+                    result <= resize(reg_a rol 1, 16);
+                when "1000" => -- flow = a >>> 1 (rotate right)
+                    result <= resize(reg_a ror 1, 16);
+                when "1001" => -- flow = a * b
+                    result <= reg_a * reg_b;
+                when "1010" => -- flow = ~(a & b) (bitwise nand)
+                    result <= a_exp nand b_exp;
+                when "1011" => -- flow = a ^ b (bitwise xor)
+                    result <= a_exp xor b_exp;
+                when others =>
+                    result <= (others => '0');
+            end case;
+        end if;
     end process set_result;
 
     flow <= std_logic_vector(result(7 downto 0));
