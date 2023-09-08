@@ -397,3 +397,39 @@ CAN IFS0,0,0,nop,X,0,,X,X,X,1,X,X,0,0,0,1
 Dispatch CAN,64,64,can,0b111111111110,0,,X,X,0,1,0,X,1,1,1,1
 buffer header 2,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
 reset,0,0,nop,X,1,,0,0,0,1,0,0,0,0,0,1
+Prepare 1,1,0,mov,X,0,,X,X,X,0,X,X,0,0,0,1
+CAN Wikipedia frame,0,0,can,0b000000101000,0,,X,X,0,1,X,X,1,1,1,1
+buffering 2,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
+buffering 3,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
+CAN CRC data,0,0,nop,X,0,,X,X,0,1,0,X,1,1,1,1
+CAN NOP,0,0,nop,X,0,,X,X,0,1,0,X,0,0,1,1
+CAN SOF,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID10,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID9,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID8,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID7,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN stuffing,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
+CAN ID6,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID5,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID4,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
+CAN ID3,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID2,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
+CAN ID1,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN ID0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN RTR,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN IDE,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN r0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN stuffing,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
+CAN DLC3,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DLC2,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DLC1,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DLC0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
+CAN DATA 7,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DATA 6,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DATA 5,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DATA 4,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DATA 3,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN stuffing,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
+CAN DATA 2,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DATA 1,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,0
+CAN DATA 0,0,0,nop,X,0,,X,X,0,1,0,0,0,0,1,1
