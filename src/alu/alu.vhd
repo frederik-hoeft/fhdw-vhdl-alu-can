@@ -181,7 +181,7 @@ begin
         end if;
     end process;
     
-    crc_done <= crc_pointer + 1 >= crc_end_pointer;
+    crc_done <= crc_pointer >= crc_end_pointer;
 
     -- process for calculating the next state
     transition : process(state, reg_cmd, crc_done, can_busy_out, can_header_pointer)
@@ -281,11 +281,15 @@ begin
     set_ram_addr: process(state, reg_cmd, reg_a, reg_b, crc_pointer)
     begin
         if ((state = s_idle or state = s_can_transmitting) and reg_cmd = "1100") then
-             -- write to RAM
-            ram_addr <= std_logic_vector("0" & reg_b);
-        else
-            -- read from RAM (any CRC calculation)
+            ram_addr <= std_logic_vector("0" & reg_b); -- write to RAM
+        elsif ((state = s_idle or state = s_can_transmitting) and reg_cmd = "1101") then
+            ram_addr <= std_logic_vector("0" & reg_a); -- prepare CRC calculation
+        elsif (state = s_can_buffering) then
             ram_addr <= std_logic_vector(crc_pointer);
+        elsif (state = s_crc_busy or state = s_can_crc_busy) then
+            ram_addr <= std_logic_vector(crc_pointer + 1);
+        else
+            ram_addr <= (others => '0');
         end if;
     end process;
 
