@@ -286,7 +286,7 @@ begin
     begin
         if ((state = s_idle and reg_cmd = "1110") or state = s_can_buffering) then
             ready <= '1'; -- we are using resources to buffer the CAN header, so we are not ready
-        elsif (crc_done_next_cycle) then
+        elsif (state = s_crc_busy and crc_done_next_cycle) then
             -- whether we are to accept a new command depends on whether the CRC result will be ready by the end of the next cycle
             ready <= '1';
         else
@@ -404,7 +404,7 @@ begin
 
     set_result : process(state, reg_cmd, a_exp, b_exp, reg_a, reg_b, crc_out, crc_done)
     begin
-        if ((state = s_crc_busy or state = s_can_crc_busy) and crc_done) then
+        if (state = s_crc_busy and crc_done) then
             result <= signed(resize(unsigned(crc_out), 16));
         elsif (state = s_can_buffering) then
             -- TODO: check if we can use this time to do something else
