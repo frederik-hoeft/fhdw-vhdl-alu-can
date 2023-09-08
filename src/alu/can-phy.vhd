@@ -126,7 +126,7 @@ begin
     tx_buffer <= tx_buffer_10 & tx_buffer_9 & tx_buffer_8 & tx_buffer_7 & tx_buffer_6 
                 & tx_buffer_5 & tx_buffer_4 & tx_buffer_3 & tx_buffer_2 & tx_buffer_1 & tx_buffer_0;
 
-    transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer)
+    transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data)
     begin
         case state is
             when idle =>
