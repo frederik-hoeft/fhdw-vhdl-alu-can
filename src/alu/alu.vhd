@@ -8,6 +8,7 @@ use unisim.vcomponents.all;
 entity alu is port (
     clk, reset : in std_logic;
     a, b : in std_logic_vector(7 downto 0);
+    clk_frequency : in integer range 1 to 255;
     can_arbitration : in std_logic_vector(11 downto 0);
     cmd : in std_logic_vector(3 downto 0);
     flow : out std_logic_vector(7 downto 0);
@@ -113,9 +114,15 @@ architecture alu_beh of alu is
     signal can_parallel_in : std_logic_vector(7 downto 0) := (others => '0');
     signal can_buffer_strobe : std_logic := '0';
     signal can_crc_strobe : std_logic := '0';
+    
+    signal reg_clk_frequency : integer range 1 to 255;
+    signal can_cycle_counter, can_cycle_counter_next : integer range 1 to 255;
 
     -- signal for storing the output values (signed 16 bit)
     signal result : signed(15 downto 0) := (others => '0');
+    
+    signal can_level, can_level_next : std_logic := '0';
+    signal can_clk : std_logic;
 begin
     -- instantiate the RAM
     ram : RAMB4_S8 port map(
@@ -135,7 +142,7 @@ begin
 
     -- instantiate the CAN PHY module
     can_controller : can_phy port map(
-        clk => clk,
+        clk => can_clk,
         buffer_strobe => can_buffer_strobe,
         crc_strobe => can_crc_strobe,
         reset => reset,
@@ -152,6 +159,7 @@ begin
             reg_a <= signed(a);
             reg_b <= signed(b);
             reg_can_arbitration <= can_arbitration;
+            reg_clk_frequency <= clk_frequency;
         end if;
     end process;
 
@@ -169,6 +177,8 @@ begin
                 can_header_pointer <= CAN_HEADER_MAX;
                 can_dlc <= (others => '0');
                 can_arbitration_buffer <= (others => '0');
+                can_level <= '1';
+                can_cycle_counter <= 1;
             else
                 state <= next_state;
                 crc_pointer <= crc_pointer_next;
@@ -177,9 +187,36 @@ begin
                 can_header_pointer <= can_header_pointer_next;
                 can_dlc <= can_dlc_next;
                 can_arbitration_buffer <= can_arbitration_buffer_next;
+                can_level <= can_level_next;
+                can_cycle_counter <= can_cycle_counter_next;
             end if;
         end if;
     end process;
+    
+    drive_can: process(clk, state, can_level, reg_clk_frequency, can_busy_out)
+    begin
+        if ((state = s_can_transmitting or (state = s_crc_busy and can_busy_out = '1')) and reg_clk_frequency /= 1) then
+            can_clk <= can_level;
+        else
+            can_clk <= clk;
+        end if;
+    end process drive_can;
+    
+    set_can_cycle_counter_next: process(state, can_cycle_counter, reg_clk_frequency, can_level, can_busy_out)
+    begin
+        if (state = s_can_transmitting or (state = s_crc_busy and can_busy_out = '1')) then
+            if (can_cycle_counter < reg_clk_frequency / 2) then
+                can_cycle_counter_next <= can_cycle_counter + 1;
+                can_level_next <= can_level;
+            else
+                can_cycle_counter_next <= 1;
+                can_level_next <= not can_level;
+            end if;
+        else
+            can_cycle_counter_next <= 1;
+            can_level_next <= '1';
+        end if;
+    end process set_can_cycle_counter_next;
     
     crc_done <= crc_pointer >= crc_end_pointer;
 

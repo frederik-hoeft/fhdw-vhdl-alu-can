@@ -136,8 +136,8 @@
       <obj_property name="CustomSignalColor">#008080</obj_property>
    </wvobject>
    <wvobject fp_name="/alu_tb/uut/can_header" type="array" db_ref_id="1">
-      <obj_property name="ElementShortName">can_header[18:0]</obj_property>
-      <obj_property name="ObjectShortName">can_header[18:0]</obj_property>
+      <obj_property name="ElementShortName">can_header[23:0]</obj_property>
+      <obj_property name="ObjectShortName">can_header[23:0]</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="CustomSignalColor">#008080</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
@@ -149,6 +149,10 @@
    <wvobject fp_name="/alu_tb/can_busy" type="array" db_ref_id="1">
       <obj_property name="ElementShortName">can_busy[0:0]</obj_property>
       <obj_property name="ObjectShortName">can_busy[0:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/alu_tb/uut/can_controller/clk" type="logic" db_ref_id="1">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
    </wvobject>
    <wvobject fp_name="/alu_tb/uut/can_controller/state" type="other" db_ref_id="1">
       <obj_property name="ElementShortName">state</obj_property>
@@ -216,12 +220,6 @@
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="CustomSignalColor">#00ffff</obj_property>
       <obj_property name="Radix">ASCIIRADIX</obj_property>
-   </wvobject>
-   <wvobject fp_name="/alu_tb/uut/can_controller/tx_buffer_ptr" type="other" db_ref_id="1">
-      <obj_property name="ElementShortName">tx_buffer_ptr</obj_property>
-      <obj_property name="ObjectShortName">tx_buffer_ptr</obj_property>
-      <obj_property name="UseCustomSignalColor">true</obj_property>
-      <obj_property name="CustomSignalColor">#00ffff</obj_property>
    </wvobject>
    <wvobject fp_name="/alu_tb/uut/can_controller/tx_bit_pointer" type="other" db_ref_id="1">
       <obj_property name="ElementShortName">tx_bit_pointer</obj_property>

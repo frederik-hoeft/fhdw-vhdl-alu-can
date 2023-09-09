@@ -366,24 +366,15 @@ begin
     -- determine the next thing to transmit, independent of bit stuffing
     set_can_out_pre_stuffing : process(state, tx_buffer, tx_bit_pointer, tx_crc_buffer, tx_crc_bit_pointer)
     begin
-        case state is
-            when tx_data =>
-                can_out_pre_stuffing <= tx_buffer(tx_bit_pointer);
-            when tx_crc =>
-                can_out_pre_stuffing <= tx_crc_buffer(tx_crc_bit_pointer);
-            when tx_crc_delimiter =>
-                can_out_pre_stuffing <= '1';
-            when tx_ack =>
-                can_out_pre_stuffing <= '0';
-            when tx_ack_delimiter =>
-                can_out_pre_stuffing <= '1';
-            when tx_eof_6 | tx_eof_5 | tx_eof_4 | tx_eof_3 | tx_eof_2 | tx_eof_1 | tx_eof_0 =>
-                can_out_pre_stuffing <= '1';
-            when tx_ifs_2 | tx_ifs_1 | tx_ifs_0 =>
-                can_out_pre_stuffing <= '1';
-            when others =>
-                can_out_pre_stuffing <= '1';
-        end case;
+        if (state = tx_data) then
+            can_out_pre_stuffing <= tx_buffer(tx_bit_pointer);
+        elsif (state = tx_crc) then
+            can_out_pre_stuffing <= tx_crc_buffer(tx_crc_bit_pointer);
+        elsif (state = tx_ack) then
+            can_out_pre_stuffing <= '0';
+        else
+            can_out_pre_stuffing <= '1';
+        end if;
     end process set_can_out_pre_stuffing;
 
     -- determine the next thing to transmit, including bit stuffing
@@ -406,7 +397,7 @@ begin
 
     set_busy : process(state)
     begin
-        if (state = idle or state = tx_ifs_0) then
+        if (state = idle) then
             busy <= '0';
         else
             busy <= '1';

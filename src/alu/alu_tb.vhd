@@ -15,6 +15,7 @@ architecture test_bench of alu_tb is
     component alu is
         port (clk, reset : in std_logic;
         a, b : in std_logic_vector(7 downto 0);
+        clk_frequency : in integer range 1 to 255;
         can_arbitration : in std_logic_vector(11 downto 0);
         cmd : in std_logic_vector(3 downto 0);
         flow, fhigh : out std_logic_vector(7 downto 0);
@@ -62,6 +63,8 @@ architecture test_bench of alu_tb is
 
     -- constants
     constant clock_period : time := 100 ns;
+    -- set to 1 MHz to run with clock frequency
+    constant assumed_frequency_mhz : integer := 1;
     --=============================================================
     -- functions
     function char2std_logic (ch: in character) return std_logic is
@@ -162,6 +165,7 @@ begin
         reset => reset(0),
         a => a,
         b => b,
+        clk_frequency => assumed_frequency_mhz,
         can_arbitration => can_arbitration,
         cmd => cmd,
         flow => flow,
