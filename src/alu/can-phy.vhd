@@ -6,6 +6,7 @@ entity can_phy is port(
     clk, buffer_strobe, crc_strobe, reset : in std_logic;
     crc_in : in std_logic_vector(14 downto 0);
     parallel_in : in std_logic_vector(7 downto 0);
+    clk_frequency : in integer range 1 to 255;
     serial_out : out std_logic;
     busy : out std_logic);
 end can_phy;
@@ -75,6 +76,10 @@ architecture behavioral of can_phy is
     -- so if the stuffing_bit is 0, then the previous bit was also 0. In case of stuffing, the inserted will be 1
     signal stuffing_bit : std_logic := '0';
     signal stuffing_bit_next : std_logic := '0';
+    
+    signal tx_cycle_counter, tx_cycle_counter_next : integer range 1 to 255;
+    
+    signal rising_edge_tx_clock : boolean;
 begin
     
     refresh_state : process(clk, reset)
@@ -99,6 +104,7 @@ begin
                 tx_buffer_2 <= (others => '0');
                 tx_buffer_1 <= (others => '0');
                 tx_buffer_0 <= (others => '0');
+                tx_cycle_counter <= 1;
             else
                 state <= next_state;
                 tx_crc_buffer <= tx_crc_buffer_next;
@@ -118,72 +124,93 @@ begin
                 tx_buffer_2 <= tx_buffer_2_next;
                 tx_buffer_1 <= tx_buffer_1_next;
                 tx_buffer_0 <= tx_buffer_0_next;
+                tx_cycle_counter <= tx_cycle_counter_next;
             end if;
         end if;
     end process refresh_state;
+    
+    underclock: process(state, tx_cycle_counter, clk_frequency)
+    begin
+        if (state /= idle and state /= buffering) then
+            if (tx_cycle_counter < clk_frequency) then
+                tx_cycle_counter_next <= tx_cycle_counter + 1;
+                rising_edge_tx_clock <= false;
+            else
+                tx_cycle_counter_next <= 1;
+                rising_edge_tx_clock <= true;
+            end if;
+        else
+            tx_cycle_counter_next <= 1;
+            rising_edge_tx_clock <= true;
+        end if;
+    end process underclock;
 
     tx_end_of_data <= std_logic_vector(tx_buffer_size_counter) & "000";
     tx_buffer <= tx_buffer_10 & tx_buffer_9 & tx_buffer_8 & tx_buffer_7 & tx_buffer_6 
                 & tx_buffer_5 & tx_buffer_4 & tx_buffer_3 & tx_buffer_2 & tx_buffer_1 & tx_buffer_0;
 
-    transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data)
+    transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data, rising_edge_tx_clock)
     begin
-        case state is
-            when idle =>
-                if (buffer_strobe = '1') then
-                    next_state <= buffering;
-                else
+        if (state = idle or state = buffering or rising_edge_tx_clock) then
+            case state is
+                when idle =>
+                    if (buffer_strobe = '1') then
+                        next_state <= buffering;
+                    else
+                        next_state <= idle;
+                    end if;
+                when buffering =>
+                    if (buffer_strobe = '1') then
+                        next_state <= buffering;
+                    else
+                        next_state <= tx_data;
+                    end if;
+                when tx_data =>
+                    -- if we are at the end of the buffer, go to tx_crc
+                    if (std_logic_vector(to_unsigned(tx_bit_pointer, tx_end_of_data'length)) = tx_end_of_data) then
+                        next_state <= tx_crc;
+                    else
+                        next_state <= tx_data;
+                    end if;
+                when tx_crc =>
+                    if (tx_crc_bit_pointer = 0) then
+                        next_state <= tx_crc_delimiter;
+                    else
+                        next_state <= tx_crc;
+                    end if;
+                when tx_crc_delimiter =>
+                    next_state <= tx_ack;
+                when tx_ack =>
+                    next_state <= tx_ack_delimiter;
+                when tx_ack_delimiter =>
+                    next_state <= tx_eof_6;
+                when tx_eof_6 =>
+                    next_state <= tx_eof_5;
+                when tx_eof_5 =>
+                    next_state <= tx_eof_4;
+                when tx_eof_4 =>
+                    next_state <= tx_eof_3;
+                when tx_eof_3 =>
+                    next_state <= tx_eof_2;
+                when tx_eof_2 =>
+                    next_state <= tx_eof_1;
+                when tx_eof_1 =>
+                    next_state <= tx_eof_0;
+                when tx_eof_0 =>
+                    next_state <= tx_ifs_2;
+                when tx_ifs_2 =>
+                    next_state <= tx_ifs_1;
+                when tx_ifs_1 =>
+                    next_state <= tx_ifs_0;
+                when tx_ifs_0 =>
                     next_state <= idle;
-                end if;
-            when buffering =>
-                if (buffer_strobe = '1') then
-                    next_state <= buffering;
-                else
-                    next_state <= tx_data;
-                end if;
-            when tx_data =>
-                -- if we are at the end of the buffer, go to tx_crc
-                if (std_logic_vector(to_unsigned(tx_bit_pointer, tx_end_of_data'length)) = tx_end_of_data) then
-                    next_state <= tx_crc;
-                else
-                    next_state <= tx_data;
-                end if;
-            when tx_crc =>
-                if (tx_crc_bit_pointer = 0) then
-                    next_state <= tx_crc_delimiter;
-                else
-                    next_state <= tx_crc;
-                end if;
-            when tx_crc_delimiter =>
-                next_state <= tx_ack;
-            when tx_ack =>
-                next_state <= tx_ack_delimiter;
-            when tx_ack_delimiter =>
-                next_state <= tx_eof_6;
-            when tx_eof_6 =>
-                next_state <= tx_eof_5;
-            when tx_eof_5 =>
-                next_state <= tx_eof_4;
-            when tx_eof_4 =>
-                next_state <= tx_eof_3;
-            when tx_eof_3 =>
-                next_state <= tx_eof_2;
-            when tx_eof_2 =>
-                next_state <= tx_eof_1;
-            when tx_eof_1 =>
-                next_state <= tx_eof_0;
-            when tx_eof_0 =>
-                next_state <= tx_ifs_2;
-            when tx_ifs_2 =>
-                next_state <= tx_ifs_1;
-            when tx_ifs_1 =>
-                next_state <= tx_ifs_0;
-            when tx_ifs_0 =>
-                next_state <= idle;
-            when others =>
-                report "CAN PHY: transition from invalid state" severity error;
-                next_state <= idle;
-        end case;
+                when others =>
+                    report "CAN PHY: transition from invalid state" severity error;
+                    next_state <= idle;
+            end case;
+        else
+            next_state <= state;
+        end if;
     end process transition;
 
     set_next_crc : process(state, crc_in, crc_strobe, tx_crc_buffer)
@@ -311,34 +338,38 @@ begin
             tx_buffer_0_next <= tx_buffer_0;
         end if;
     end process set_next_tx_buffer_0;
-
-    -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
-    set_stuffing_params : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing)
+    
+    set_next_stuffing_counter : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing, rising_edge_tx_clock)
     begin
-        if (state = tx_data or state = tx_crc) then
-            if (stuffing_bit = can_out_pre_stuffing and stuffing_counter < 4) then
-                stuffing_counter_next <= stuffing_counter + 1;
-                stuffing_bit_next <= stuffing_bit;
-            else
-                stuffing_counter_next <= 0;
-                stuffing_bit_next <= not stuffing_bit;
-            end if;
+        if ((state = tx_data or state = tx_crc) and not rising_edge_tx_clock) then
+            stuffing_counter_next <= stuffing_counter;
+        elsif ((state = tx_data or state = tx_crc) and stuffing_bit = can_out_pre_stuffing and stuffing_counter < 4) then
+            stuffing_counter_next <= stuffing_counter + 1;
         else
             stuffing_counter_next <= 0;
-            stuffing_bit_next <= '1';
         end if;
-    end process set_stuffing_params;
+    end process set_next_stuffing_counter;
+    
+    -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
+    set_next_stuffing_bit : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing, rising_edge_tx_clock)
+    begin
+        if (state = idle) then
+            stuffing_bit_next <= '1';
+        elsif (rising_edge_tx_clock and stuffing_bit = can_out_pre_stuffing and stuffing_counter < 4) then
+            stuffing_bit_next <= stuffing_bit;
+        else
+            stuffing_bit_next <= not stuffing_bit;
+        end if;
+    end process set_next_stuffing_bit;
 
     -- update the transmit bit pointer
-    set_next_tx_bit_counter : process(state, tx_bit_pointer, stuffing_counter)
+    set_next_tx_bit_counter : process(state, tx_bit_pointer, stuffing_counter, rising_edge_tx_clock)
     begin
         if (state = tx_data) then
-            if (stuffing_counter = 4) then
-                -- if we are stuffing, delay the transmission of the next bit
-                tx_bit_pointer_next <= tx_bit_pointer;
-            else
-                -- otherwise, decrement the pointer
+            if (rising_edge_tx_clock and stuffing_counter /= 4) then
                 tx_bit_pointer_next <= tx_bit_pointer - 1;
+            else 
+                tx_bit_pointer_next <= tx_bit_pointer;
             end if;
         else
             -- if we are not transmitting data, reset the pointer
@@ -347,15 +378,13 @@ begin
     end process set_next_tx_bit_counter;
 
     -- update the transmit tx_crc bit pointer
-    set_next_tx_crc_bit_counter : process(state, tx_crc_bit_pointer, stuffing_counter)
+    set_next_tx_crc_bit_counter : process(state, tx_crc_bit_pointer, stuffing_counter, rising_edge_tx_clock)
     begin
         if (state = tx_crc) then
-            if (stuffing_counter = 4) then
-                -- if we are stuffing, delay the transmission of the next bit
-                tx_crc_bit_pointer_next <= tx_crc_bit_pointer;
-            else
-                -- otherwise, decrement the pointer
+            if (rising_edge_tx_clock and stuffing_counter /= 4) then
                 tx_crc_bit_pointer_next <= tx_crc_bit_pointer - 1;
+            else
+                tx_crc_bit_pointer_next <= tx_crc_bit_pointer;
             end if;
         else
             -- if we are not transmitting tx_crc, reset the pointer
