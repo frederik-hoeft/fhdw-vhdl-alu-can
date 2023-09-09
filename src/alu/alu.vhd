@@ -193,10 +193,13 @@ architecture alu_beh of alu is
     -- first 5 bits are padding, next bit is the start of frame bit
     -- some bits are filled with constant values (e.g. padding, SOF, IDE, R0)
     signal can_header : std_logic_vector(CAN_HEADER_MAX downto 0);
+    
+    constant CAN_HEADER_RAW_MAX : unsigned(1 downto 0) := "10";
 
     -- how many words of the CAN header have been pushed to the CAN PHY module so far?
-    signal can_header_pointer : integer range CAN_HEADER_MAX downto 0 := CAN_HEADER_MAX;
-    signal can_header_pointer_next : integer range CAN_HEADER_MAX downto 0 := CAN_HEADER_MAX;
+    signal can_header_pointer_raw : unsigned(1 downto 0) := CAN_HEADER_RAW_MAX;
+    signal can_header_pointer_raw_next : unsigned(1 downto 0) := CAN_HEADER_RAW_MAX;
+    signal can_header_pointer : integer range CAN_HEADER_MAX downto 0;
 
     -- CAN controller control signals
     -- CAN we start another CAN transmission? (pun intended)
@@ -244,6 +247,8 @@ begin
         parallel_in => can_parallel_in,
         serial_out => can,
         busy => can_busy_out);
+        
+    can_header_pointer <= to_integer(unsigned(std_logic_vector(can_header_pointer_raw) & "111"));
 
     -- process for storing the command and the input values
     snap_inputs : process(clk)
@@ -270,8 +275,7 @@ begin
                 state <= s_idle;
                 crc_pointer <= (others => '0');
                 crc_current <= (others => '0');
-                crc_end_pointer <= (others => '0');
-                can_header_pointer <= CAN_HEADER_MAX;
+                can_header_pointer_raw <= CAN_HEADER_RAW_MAX;
                 can_dlc <= (others => '0');
                 can_arbitration_buffer <= (others => '0');
             else
@@ -279,7 +283,7 @@ begin
                 crc_pointer <= crc_pointer_next;
                 crc_current <= crc_next;
                 crc_end_pointer <= crc_end_pointer_next;
-                can_header_pointer <= can_header_pointer_next;
+                can_header_pointer_raw <= can_header_pointer_raw_next;
                 can_dlc <= can_dlc_next;
                 can_arbitration_buffer <= can_arbitration_buffer_next;
             end if;
@@ -291,7 +295,7 @@ begin
     crc_done <= crc_pointer >= crc_end_pointer;
 
     -- process for calculating the next state
-    transition : process(state, reg_cmd, crc_done, can_busy_out, can_header_pointer)
+    transition : process(state, reg_cmd, crc_done, can_busy_out, can_header_pointer_raw)
     begin
         case state is
             when s_idle =>
@@ -321,9 +325,9 @@ begin
                     next_state <= s_crc_busy;
                 end if;
             when s_can_buffering =>
-                -- CAN header pointer (upper bound) is decremented by 8 every cycle during CAN header buffering
-                -- if it reaches 7, then we are done buffering the CAN header
-                if (can_header_pointer = 7) then
+                -- CAN header pointer (upper bound) is decremented by 1 word every cycle during CAN header buffering
+                -- if it reaches 0, then we are done buffering the CAN header
+                if (can_header_pointer_raw = 0) then
                     next_state <= s_can_crc_busy;
                 else
                     next_state <= s_can_buffering;
@@ -468,13 +472,13 @@ begin
     end process;
 
     -- update the pointer used to push the CAN header to the CAN module
-    set_can_header_pointer : process(state, reg_cmd, can_header_pointer)
+    set_can_header_pointer_raw : process(state, reg_cmd, can_header_pointer_raw)
     begin
         if ((state = s_idle and reg_cmd = "1110") or state = s_can_buffering) then
             -- operate in network byte order (big endian) and decrement by 8 every cycle
-            can_header_pointer_next <= can_header_pointer - 8;
+            can_header_pointer_raw_next <= can_header_pointer_raw - 1;
         else
-            can_header_pointer_next <= CAN_HEADER_MAX;
+            can_header_pointer_raw_next <= CAN_HEADER_RAW_MAX;
         end if;
     end process;
 
@@ -512,9 +516,9 @@ begin
         end if;
     end process;
 
-    set_reg_can_dlc : process(state, can_header_pointer, crc_pointer, crc_end_pointer, can_dlc)
+    set_reg_can_dlc : process(state, can_header_pointer_raw, crc_pointer, crc_end_pointer, can_dlc)
     begin
-        if (state = s_can_buffering and can_header_pointer = 15) then
+        if (state = s_can_buffering and can_header_pointer_raw = 1) then
             -- write the data length code to the CAN header (only possible in the second cycle of buffering)
             can_dlc_next <= std_logic_vector(resize(unsigned(crc_end_pointer - crc_pointer + 1), 4));
         else
