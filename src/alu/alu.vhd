@@ -258,7 +258,7 @@ begin
     end process;
 
     -- sign expansion for input values, allowing 16 bit operations
-    -- TODO: do we even need this?
+    -- this is faster than resizing the results seperately to 16 bit.
     a_exp <= resize(reg_a, 16);
     b_exp <= resize(reg_b, 16);
 
