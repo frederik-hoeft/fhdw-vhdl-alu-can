@@ -14,17 +14,24 @@ end can_phy;
 architecture behavioral of can_phy is
     
     type state_type is (
+        -- idle state
         idle,
+        -- buffering header + data from ALU via parallel_in
         buffering, 
+        -- transmitting data from tx_buffer
         tx_data, 
+        -- transmitting CRC from tx_crc_buffer
         tx_crc,
+        -- all the other single-cycle states for transmitting control bits
         tx_crc_delimiter,
         tx_ack,
         tx_ack_delimiter,
         tx_eof_6, tx_eof_5, tx_eof_4, tx_eof_3, tx_eof_2, tx_eof_1, tx_eof_0,
         tx_ifs_2, tx_ifs_1, tx_ifs_0);
 
+    -- the actual bit that we are transmitting
     signal can_out : std_logic;
+    -- the bit that we would be transmitting if stuffing was not a thing
     signal can_out_pre_stuffing : std_logic;
 
     -- 83 bit tx buffer:
@@ -34,15 +41,27 @@ architecture behavioral of can_phy is
     -- ACK, IFS, etc via state machine
     constant TX_BUFFER_MAX : integer := 82;
 
+    -- the virtual header + data transmission buffer
+    -- in reality, this is not necessarily a contiguous block of memory
+    -- it once was, but word alignment and addressing during buffering was a bottleneck
+    -- so now we have *a lot* of single-word buffers, and we just concatenate them here
     signal tx_buffer : std_logic_vector(TX_BUFFER_MAX downto 0);
 
     -- the buffer size counter is 0 when the buffer is full
     constant TX_BUFFER_SIZE_COUNTER_MAX : integer := 11;
+    -- we are counting words here, starting at the top of the buffer, and going down
+    -- this way we already have everything in network order, and can just go down bit by bit for transmission
     signal tx_buffer_size_counter, tx_buffer_size_counter_next : unsigned(3 downto 0) := to_unsigned(TX_BUFFER_SIZE_COUNTER_MAX, 4);
     signal tx_end_of_data : std_logic_vector(6 downto 0);
 
+    -- top buffer only contains 3 bits, because the header is only 19 bits
     signal tx_buffer_10, tx_buffer_10_next : std_logic_vector(2 downto 0);
 
+    -- all the other buffers contain 8 bits.
+    -- this is ugly, but that's what optimization does to your code
+    -- we could probably have used a RAM here, but that would be a pain for bit-level access
+    -- idk, maybe that's possible, but this was easier, works, and allows the synthesizer to optimize
+    -- and move the buffer chunks around as it sees fit
     signal tx_buffer_9, tx_buffer_8, tx_buffer_7, tx_buffer_6, tx_buffer_5, 
            tx_buffer_4, tx_buffer_3, tx_buffer_2, tx_buffer_1, tx_buffer_0 : std_logic_vector(7 downto 0);
         
@@ -54,8 +73,10 @@ architecture behavioral of can_phy is
     signal tx_bit_pointer : integer range TX_BUFFER_MAX downto 0 := 0;
     signal tx_bit_pointer_next : integer range TX_BUFFER_MAX downto 0 := 0;
 
+    -- inclusive CRC buffer upper bound in bits
     constant TX_CRC_BUFFER_MAX : integer := 14;
 
+    -- the CRC buffer contains the 15 bit CRC
     signal tx_crc_buffer, tx_crc_buffer_next : std_logic_vector(TX_CRC_BUFFER_MAX downto 0);
 
     -- the tx_crc bit pointer points to the next CRC bit to be transmitted
@@ -63,6 +84,7 @@ architecture behavioral of can_phy is
     signal tx_crc_bit_pointer : integer range TX_CRC_BUFFER_MAX downto 0 := 0;
     signal tx_crc_bit_pointer_next : integer range TX_CRC_BUFFER_MAX downto 0 := 0;
 
+    -- the state machine
     signal state : state_type := idle;
     signal next_state : state_type := idle;
 
@@ -77,11 +99,17 @@ architecture behavioral of can_phy is
     signal stuffing_bit : std_logic := '0';
     signal stuffing_bit_next : std_logic := '0';
     
+    -- we need to throttle everything to the CAN bus frequency when transmitting
+    -- so we just count cycles
     signal tx_cycle_counter, tx_cycle_counter_next : integer range 1 to 255;
     
+    -- pulse to simulate a rising edge clock when in throttled mode
     signal rising_edge_tx_clock : boolean;
 begin
     
+    -- update all the flip flops
+    -- it's a lot of them (around 200, I think), so not very space efficient
+    -- but that never was the goal anyway
     refresh_state : process(clk, reset)
     begin
         if (rising_edge(clk)) then
@@ -129,8 +157,18 @@ begin
         end if;
     end process refresh_state;
     
+    -- only during transmission, we need to throttle the clock
+    -- originally, we actually throttled the clock, but that was a pain
+    -- and we had a lot of weird negative timing slack issues to a point
+    -- where even running the thing a 1 Hz was not possible
+    -- so now we just count cycles, and simulate a rising edge clock
+    -- through the state machine.
+    -- works better, is easier to understand, and is more flexible
+    -- idk why we didn't do that in the first place
     underclock: process(state, tx_cycle_counter, clk_frequency)
     begin
+        -- we need to be responsive while idling and buffering
+        -- and can do so at full speed
         if (state /= idle and state /= buffering) then
             if (tx_cycle_counter < clk_frequency) then
                 tx_cycle_counter_next <= tx_cycle_counter + 1;
@@ -145,10 +183,15 @@ begin
         end if;
     end process underclock;
 
+    -- end of data counter is in words, so "multiply" by 8
     tx_end_of_data <= std_logic_vector(tx_buffer_size_counter) & "000";
+
+    -- the beautiful transmission buffer concatenation nightmare
+    -- not clean, but it works, and it's 3ns faster than a continuous block of memory
     tx_buffer <= tx_buffer_10 & tx_buffer_9 & tx_buffer_8 & tx_buffer_7 & tx_buffer_6 
                 & tx_buffer_5 & tx_buffer_4 & tx_buffer_3 & tx_buffer_2 & tx_buffer_1 & tx_buffer_0;
 
+    -- the state machine
     transition : process(state, buffer_strobe, tx_bit_pointer, tx_crc_bit_pointer, tx_end_of_data, rising_edge_tx_clock)
     begin
         if (state = idle or state = buffering or rising_edge_tx_clock) then
@@ -178,6 +221,8 @@ begin
                     else
                         next_state <= tx_crc;
                     end if;
+                -- all the other single-cycle states
+                -- not very elegant, but it works
                 when tx_crc_delimiter =>
                     next_state <= tx_ack;
                 when tx_ack =>
@@ -213,6 +258,7 @@ begin
         end if;
     end process transition;
 
+    -- refresh the crc buffer or save new values
     set_next_crc : process(state, crc_in, crc_strobe, tx_crc_buffer)
     begin
         if (state = idle) then
@@ -224,6 +270,8 @@ begin
         end if;
     end process set_next_crc;
 
+    -- this counter is in words and counts from the top of the buffer down
+    -- it is used as a termination condition for the data transmission
     set_next_tx_buffer_size_counter : process(state, tx_buffer_size_counter, buffer_strobe)
     begin
         if (buffer_strobe = '1') then
@@ -240,6 +288,11 @@ begin
     end process set_next_tx_buffer_size_counter;
 
     -- update the tx buffers
+    -- really, really ugly, but it works
+    -- we could probably work with generate statements here, but that would probably take more
+    -- time than just copy-pasting this 10 times and letting GitHub Copilot figure out the rest
+    -- even though this is like 10 times more code this is actually way faster than the previous 
+    -- pointer based approach on the long contiguous buffer
     set_next_tx_buffer_10 : process(tx_buffer_10, tx_buffer_size_counter, parallel_in, buffer_strobe)
     begin
         if (buffer_strobe = '1' and tx_buffer_size_counter = 11) then
@@ -339,6 +392,12 @@ begin
         end if;
     end process set_next_tx_buffer_0;
     
+    -- this is the bottleneck of the whole thing
+    -- we need to count the number of consecutive bits of the same value that we have transmitted
+    -- but also only count during the data and CRC transmission
+    -- and also only count on the simulated rising edge clock
+    -- this is pretty optimized already (simply changing anything here will break the timing by like 2ns)
+    -- Idk, maybe there is a better way to do this, but this works, and is fast enough
     set_next_stuffing_counter : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing, rising_edge_tx_clock)
     begin
         if ((state = tx_data or state = tx_crc) and not rising_edge_tx_clock) then
@@ -351,6 +410,7 @@ begin
     end process set_next_stuffing_counter;
     
     -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
+    -- this is the second bottleneck, but it's not as bad as the first one
     set_next_stuffing_bit : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing, rising_edge_tx_clock)
     begin
         if (state = idle) then
@@ -366,6 +426,8 @@ begin
     set_next_tx_bit_counter : process(state, tx_bit_pointer, stuffing_counter, rising_edge_tx_clock)
     begin
         if (state = tx_data) then
+            -- for some reason a check agains exactly 4 is faster here than less than 4
+            -- idk, it was the other way around in the other processes, gotta love non-deterministic synthesis
             if (rising_edge_tx_clock and stuffing_counter /= 4) then
                 tx_bit_pointer_next <= tx_bit_pointer - 1;
             else 
@@ -402,6 +464,7 @@ begin
         elsif (state = tx_ack) then
             can_out_pre_stuffing <= '0';
         else
+            -- all the other states just transmit 1, CAN really isn't that complicated looking at it like this
             can_out_pre_stuffing <= '1';
         end if;
     end process set_can_out_pre_stuffing;
@@ -420,7 +483,7 @@ begin
     end process apply_stuffing;
 
     --------------------------------------------------------------------------------
-    -- output signals
+    -- output signals, not a lot to see here
     --------------------------------------------------------------------------------
     serial_out <= can_out;
 

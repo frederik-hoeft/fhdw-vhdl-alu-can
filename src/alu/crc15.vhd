@@ -32,6 +32,9 @@ entity crc15 is
     );
 end entity crc15;
 
+-- note from the author:
+-- took a bit of trial and error to find the right settings for the
+-- generator, but this is pretty much the optimal solution I think.
 architecture Behavioral of crc15 is
 begin
     crcOut(0) <= crcIn(7) xor crcIn(8) xor crcIn(9) xor crcIn(10) xor crcIn(11) xor crcIn(13) xor crcIn(14) xor data(0) xor data(1) xor data(2) xor data(3) xor data(4) xor data(6) xor data(7);
