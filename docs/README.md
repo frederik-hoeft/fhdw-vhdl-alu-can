@@ -15,10 +15,7 @@ TODO
 
 ## Aktualisierter Test-Preprocessor
 
-TODO: releases
-
-_Den source code finden Sie in `/csharp-comment-parser/src`. Pre-compiled executables für Windows/Linux x64 sind verfügbar in der [GitHub Releases](https://github.com/frederik-hoeft/fhdw-vhdl-stack/releases)._
-
+_Den source code finden Sie in `/csharp-comment-parser/src`. Pre-compiled executables für Windows/Linux x64 sind verfügbar in der [GitHub Releases](https://github.com/frederik-hoeft/fhdw-vhdl-alu-can/releases)._
 
 Das in den vorangangenen VHDL Projekten erstellte C\#/.NET Programm, welches zur vereinfachten Erstellung von Testvektoren gedient hat, wurde nun erweitert und erneut genutzt. Die bestehende Implementierung erlaubte bereits, Testvektoren in angegebenen Formaten (Binär, Hexadezimal, Dezimal) zusammen mit Kommentaren in einer CSV Datei zu definieren und die Stimuli-Response Dateien zu generieren. Die neue Version erweitert die Datenformate um dynamische Präfix-basierte Spaltendefinitionen, sowie die Möglichkeit, Lookup-Tabellen für textuelle Daten zu definieren.
 
