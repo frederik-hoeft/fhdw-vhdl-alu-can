@@ -353,38 +353,3 @@ static partial class RegexThings
     [GeneratedRegex(";;|,,")]
     public static partial Regex GetEmptyColumnRegex();
 }
-
-partial class Conversions
-{
-    /// <summary>
-    /// Convert non binary numbers to binary.
-    /// </summary>
-    /// <param name="toBeChecked">The numbers as strings that may need to be converted to binary.</param>
-    /// <returns>A new list full of binary digits.</returns>
-    public static List<string> DoConversions(List<string> toBeChecked)
-    {
-        List<string> output = new();
-        // check if any conversions need to be made before writing the data to the new file
-        foreach (string word in toBeChecked)
-        {
-            if (word.EndsWith('d'))
-            {
-                // convert decimal number into binary digits
-                int intWord = Convert.ToInt32(word[..^1]);
-                string binaryWord = Convert.ToString(intWord, 2);
-
-                Console.WriteLine($"Found: '{word}' -> Result: '{binaryWord}'");
-
-                foreach (char binaryDigit in binaryWord)
-                {
-                    output.Add(binaryDigit.ToString());
-                }
-            }
-            else
-            {
-                output.Add(word);
-            }
-        }
-        return output;
-    }
-}

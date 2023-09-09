@@ -194,12 +194,17 @@ architecture alu_beh of alu is
     -- some bits are filled with constant values (e.g. padding, SOF, IDE, R0)
     signal can_header : std_logic_vector(CAN_HEADER_MAX downto 0);
     
+    -- the CAN header is buffered to the CAN PHY module in 3 words (2, 1, 0)
     constant CAN_HEADER_RAW_MAX : unsigned(1 downto 0) := "10";
 
     -- how many words of the CAN header have been pushed to the CAN PHY module so far?
+    -- the header pointer is decremented by 1 word every cycle during CAN header buffering
+    -- and it points to the upper bound of each word, so bits 23, 15, and 7
+    signal can_header_pointer : integer range CAN_HEADER_MAX downto 0;
+    -- we therefore only need 2 bits to represent the header pointer
+    -- the lower 3 bits are then just filled with '1's
     signal can_header_pointer_raw : unsigned(1 downto 0) := CAN_HEADER_RAW_MAX;
     signal can_header_pointer_raw_next : unsigned(1 downto 0) := CAN_HEADER_RAW_MAX;
-    signal can_header_pointer : integer range CAN_HEADER_MAX downto 0;
 
     -- CAN controller control signals
     -- CAN we start another CAN transmission? (pun intended)
@@ -247,7 +252,9 @@ begin
         parallel_in => can_parallel_in,
         serial_out => can,
         busy => can_busy_out);
-        
+    
+    -- fill the lower 3 bits of the CAN header pointer with '1's, basically multiplying by 8 and then subtracting 1
+    -- header pointer will start at 23, then 15, then 7, and finally underflow to 31.
     can_header_pointer <= to_integer(unsigned(std_logic_vector(can_header_pointer_raw) & "111"));
 
     -- process for storing the command and the input values
