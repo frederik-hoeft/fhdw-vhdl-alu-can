@@ -624,8 +624,6 @@ begin
             cout <= '1';
         elsif (reg_cmd = "0100" and reg_a /= -128) then
             cout <= not reg_a(7);
-        elsif (reg_cmd = "0101") then
-            cout <= reg_a(7);
         else
             cout <= '0';
         end if;
@@ -643,20 +641,13 @@ begin
     end process;
 
     set_sign : process(reg_cmd, result)
-        variable less_than_0 : boolean;
     begin
         if (reg_cmd = "0010" or reg_cmd = "0011" or reg_cmd = "1001") then
             -- 16 bit ops
-            less_than_0 := result < 0;
+            sign <= result(15);
         else 
             -- 8 bit ops
-            less_than_0 := result(7) = '1';
-        end if;
-        -- set sign bit
-        if (less_than_0) then
-            sign <= '1';
-        else
-            sign <= '0';
+            sign <= result(7);
         end if;
     end process;
 
