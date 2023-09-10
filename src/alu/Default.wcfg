@@ -170,15 +170,16 @@
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="CustomSignalColor">#ff00ff</obj_property>
    </wvobject>
-   <wvobject fp_name="/alu_tb/uut/can_controller/stuffing_counter" type="other" db_ref_id="1">
-      <obj_property name="ElementShortName">stuffing_counter</obj_property>
-      <obj_property name="ObjectShortName">stuffing_counter</obj_property>
-      <obj_property name="UseCustomSignalColor">true</obj_property>
-      <obj_property name="CustomSignalColor">#00ffff</obj_property>
-   </wvobject>
    <wvobject fp_name="/alu_tb/uut/can_controller/stuffing_bit" type="logic" db_ref_id="1">
       <obj_property name="ElementShortName">stuffing_bit</obj_property>
       <obj_property name="ObjectShortName">stuffing_bit</obj_property>
+      <obj_property name="UseCustomSignalColor">true</obj_property>
+      <obj_property name="CustomSignalColor">#00ffff</obj_property>
+   </wvobject>
+   <wvobject fp_name="/alu_tb/uut/can_controller/stuffing" type="array" db_ref_id="1">
+      <obj_property name="ElementShortName">stuffing[4:0]</obj_property>
+      <obj_property name="ObjectShortName">stuffing[4:0]</obj_property>
+      <obj_property name="Radix">BINARYRADIX</obj_property>
       <obj_property name="UseCustomSignalColor">true</obj_property>
       <obj_property name="CustomSignalColor">#00ffff</obj_property>
    </wvobject>

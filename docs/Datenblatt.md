@@ -44,7 +44,36 @@ Die ALU arbeitet auf 8-Bit Eingaben und liefert 8 bis 16-Bit Ausgaben, je nach O
 
 ## Operationen
 
+Die ALU unterstützt 16 verschiedene Operationen, die über 4-Bit Microcode Wörter gesteuert werden. Die Operationen werden in der Reihenfolge der Opcodes aufgelistet. Die Opcodes sind in der Tabelle unter [Opcode Kurzreferenz](#opcode-kurzreferenz) zu finden. Die Operationen werden in der Tabelle unter [Operationen im Detail](#operationen-im-detail) beschrieben.
+
+Um das Erstellen von Testvektoren zu vereinfachen, sind die Opcodes auch als Preprozessor-Assembly (PPASM) Befehle verfügbar, die von dem in der README beschriebenen C# Skript in die Opcodes übersetzt werden. Der Vollständigkeit halber werden diese PPASM Befehle im Folgenden ebenfalls aufgelistet, obwohl sie nicht direkt von der ALU unterstützt werden.
+
+### Opcode Kurzreferenz
+
+| Opcode | PPASM | Operation | Common Name |
+|--------|-------|-----------|-------------|
+| `0000` | `add` | `flow[7:0] = a[7:0] + b[7:0]`   | Addition    |
+| `0001` | `sub` | `flow[7:0] = a[7:0] - b[7:0]`   | Subtraction |
+| `0010` | `am2` | `flow[15:0] = (a<15:0> + b<15:0>) * 2` | Add-Multiply by 2 |
+| `0011` | `am4` | `flow[15:0] = (a<15:0> + b<15:0>) * 4` | Add-Multiply by 4 |
+| `0100` | `neg` | `flow[7:0] = -a[7:0]` | Negation |
+| `0101` | `shl` | `flow[7:0] = a[7:0] << 1` | Arithmetic Shift Left |
+| `0110` | `shr` | `flow[7:0] = a[7:0] >> 1` | Arithmetic Shift Right |
+| `0111` | `rol` | `flow[7:0] = a[7:0] <<< 1` | Rotate Left |
+| `1000` | `ror` | `flow[7:0] = a[7:0] >>> 1` | Rotate Right |
+| `1001` | `mul` | `flow[15:0] = a[7:0] * b[7:0]` | Multiplication |
+| `1010` | `nand` | `flow[7:0] = ~(a[7:0] & b[7:0])` | NAND |
+| `1011` | `xor` | `flow[7:0] = a[7:0] ^ b[7:0]` | XOR |
+| `1100` | `mov` | `RAM[b[7:0]] = a[7:0]` | Move |
+| `1101` | `crc` | `flow[15:0] = pad0(CRC15(RAM[a[7:0]..b[7:0]]))` | CRC-15 |
+| `1110` | `can` | `can <- SOF <can_arbitration> IDE r0 DLC RAM[a[7:0]..b[7:0]] CRC[14:0] CRC_Delimiter ACK ACK_Delimiter EOF IFS` | CAN TX |
+| `1111` | `nop` | - | Reserved |
+
+
+### Operationen im Detail
+
 TODO: Anmerkungen, Precondition, Flags, Cycles
+TODO: Tabelle zu groß, auf subsections aufteilen!
 
 | Code | PPASM | Operation | Common Name | Precondition | Flags | Cycles | Beschreibung | Anmerkungen |
 |--------|-------|-----------|-------------|-----------------|-------|------------|--------------|-------------|
@@ -64,6 +93,19 @@ TODO: Anmerkungen, Precondition, Flags, Cycles
 | `1101` | `crc` | `flow[15:0] = pad0(CRC15(RAM[a[7:0]..b[7:0]]))` | CRC-15 | | `crc_busy` | 2 | Berechnet die CRC-15 Prüfsumme des RAM Bereichs zwischen Adressen A und B | |
 | `1110` | `can` | `can <- SOF <can_arbitration> IDE r0 DLC RAM[a[7:0]..b[7:0]] CRC[14:0] CRC_Delimiter ACK ACK_Delimiter EOF IFS` | CAN TX | | `can_busy` | 1 | Sendet eine CAN Nachricht mit der angegebenen Arbitration ID und den Daten aus dem RAM zwischen Adressen A und B | |
 | `1111` | `nop` | - | Reserved | | | 1 | Reserviert für zukünftige Erweiterungen, Verwendung auf eigene Gefahr als NOP | |
+
+#### Addition
+
+| Code | PPASM | Operation | Precondition | Flags | Cycles |
+|--------|-------|-----------|-------------|-----------------|-------|
+| `0000` | `add` | `flow[7:0] = a[7:0] + b[7:0]`   | `ready = 0` | `cout`, `ov`, `equal`, `sign` | 1 |
+
+Der Wert von Operand A wird mit dem Wert von Operand B addiert. Das Ergebnis wird in `flow` gespeichert, wobei `fhigh` undefiniert ist. Die Flags werden wie folgt gesetzt:
+- `cout`: `1`, wenn das signed 8-Bit Ergebnis größer als 127 wäre, `0` sonst.
+
+
+
+
 
 ## Power Consumption
 
