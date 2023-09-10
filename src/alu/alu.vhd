@@ -622,7 +622,7 @@ begin
             cout <= '1';
         elsif (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
             cout <= '1';
-        elsif (reg_cmd = "0100" and (reg_a > 0 or reg_a = -128)) then
+        elsif (reg_cmd = "0100" and (-reg_a) < 0) then
             cout <= '1';
         else
             cout <= '0';
