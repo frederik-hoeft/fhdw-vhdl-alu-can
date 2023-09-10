@@ -618,7 +618,7 @@ begin
 
     set_cout : process(reg_cmd, result, reg_a, reg_b)
     begin
-        if (reg_cmd = "0000" and ((("0" & reg_a) + ("0" & reg_b)) > 255)) then
+        if (reg_cmd = "0000" and (unsigned(("0" & reg_a) + ("0" & reg_b)) > 255)) then
             cout <= '1';
         elsif (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
             cout <= '1';
