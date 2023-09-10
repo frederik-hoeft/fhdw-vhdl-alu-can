@@ -88,11 +88,16 @@ architecture behavioral of can_phy is
     signal state : state_type := idle;
     signal next_state : state_type := idle;
 
-    -- the stuffing bit is the bit that we are counting, NOT the bit that will be inserted
-    -- so if the stuffing_bit is 0, then the previous bit was also 0. In case of stuffing, the inserted will be 1
+    -- the stuffing bit is the bit that will be inserted to ensure that there are no more than 5 consecutive bits of the same value
     signal stuffing_bit : std_logic := '0';
     
-    signal stuffing, stuffing_next : std_logic_vector(4 downto 0) := (others => 'X');
+    -- the stuffing register contains the last 5 bits that were transmitted
+    -- we need to keep track of them to know when to insert a stuffing bit
+    -- at the beginning we don't know what the last 5 bits were, so we just set them to Z
+    -- Idk if this works in reality, but it works in simulation, and that's all that matters :)
+    signal stuffing, stuffing_next : std_logic_vector(4 downto 0) := (others => 'Z');
+
+    -- whether or not we need to insert a stuffing bit
     signal requires_stuffing : boolean;
     
     -- we need to throttle everything to the CAN bus frequency when transmitting
@@ -127,7 +132,7 @@ begin
                 tx_buffer_1 <= (others => '0');
                 tx_buffer_0 <= (others => '0');
                 tx_cycle_counter <= 1;
-                stuffing <= (others => 'X');
+                stuffing <= (others => 'Z');
             else
                 state <= next_state;
                 tx_crc_buffer <= tx_crc_buffer_next;
@@ -386,58 +391,33 @@ begin
         end if;
     end process set_next_tx_buffer_0;
     
+    -- we require stuffing if the last 5 bits were all the same
     requires_stuffing <= stuffing = "00000" or stuffing = "11111";
+    -- the stuffing bit is the bit that will be inserted
     stuffing_bit <= not stuffing(0);
     
+    -- update the stuffing shift register
     set_stuffing_next : process(state, stuffing, can_out_pre_stuffing, requires_stuffing, stuffing_bit, rising_edge_tx_clock)
     begin
+        -- if we are buffering (state before transmission), reset the stuffing register to tri-state
         if (state = buffering) then
-            stuffing_next <= "XXXXX";
+            stuffing_next <= (others => 'Z');
+        -- if there is no simulated rising edge clock, we hold the stuffing register
         elsif (not rising_edge_tx_clock) then
             stuffing_next <= stuffing;
+        -- if we need to insert a stuffing bit, we shift the stuffing register and insert the stuffing bit
         elsif (requires_stuffing) then
             stuffing_next <= stuffing(3 downto 0) & stuffing_bit;
         else
+            -- otherwise, we shift the stuffing register and insert the bit that we are transmitting
             stuffing_next <= stuffing(3 downto 0) & can_out_pre_stuffing;
         end if;
     end process set_stuffing_next;
-    
-    -- this is the bottleneck of the whole thing
-    -- we need to count the number of consecutive bits of the same value that we have transmitted
-    -- but also only count during the data and CRC transmission
-    -- and also only count on the simulated rising edge clock
-    -- this is pretty optimized already (simply changing anything here will break the timing by like 2ns)
-    -- Idk, maybe there is a better way to do this, but this works, and is fast enough
-    --set_next_stuffing_counter : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing, rising_edge_tx_clock)
-    --begin
-    --    if ((state = tx_data or state = tx_crc) and not rising_edge_tx_clock) then
-    --        stuffing_counter_next <= stuffing_counter;
-    --    elsif ((state = tx_data or state = tx_crc) and stuffing_bit = can_out_pre_stuffing and stuffing_counter < 4) then
-    --        stuffing_counter_next <= stuffing_counter + 1;
-    --    else
-    --        stuffing_counter_next <= 0;
-    --    end if;
-    --end process set_next_stuffing_counter;
-    
-    -- update the stuffing bit (the thing that we are counting) and the how often it has been consecutively transmitted
-    -- this is the second bottleneck, but it's not as bad as the first one
-    --set_next_stuffing_bit : process(state, stuffing_counter, stuffing_bit, can_out_pre_stuffing, rising_edge_tx_clock)
-    --begin
-    --    if (state = idle) then
-    --        stuffing_bit_next <= '1';
-    --    elsif (rising_edge_tx_clock and stuffing_bit = can_out_pre_stuffing and stuffing_counter < 4) then
-    --        stuffing_bit_next <= stuffing_bit;
-    --    else
-    --        stuffing_bit_next <= not stuffing_bit;
-    --    end if;
-    --end process set_next_stuffing_bit;
 
     -- update the transmit bit pointer
     set_next_tx_bit_counter : process(state, tx_bit_pointer, requires_stuffing, rising_edge_tx_clock)
     begin
         if (state = tx_data) then
-            -- for some reason a check agains exactly 4 is faster here than less than 4
-            -- idk, it was the other way around in the other processes, gotta love non-deterministic synthesis
             if (rising_edge_tx_clock and not requires_stuffing) then
                 tx_bit_pointer_next <= tx_bit_pointer - 1;
             else 
@@ -483,8 +463,7 @@ begin
     apply_stuffing : process(state, requires_stuffing, stuffing_bit, can_out_pre_stuffing)
     begin 
         if ((state = tx_data or state = tx_crc) and requires_stuffing) then
-            -- the stuffing bit is the thing that we are counting
-            -- if we are stuffing, transmit the inverse of the stuffing bit
+            -- gotta insert a stuffing bit
             can_out <= stuffing_bit;
         else
             -- otherwise, transmit whatever we are supposed to transmit
