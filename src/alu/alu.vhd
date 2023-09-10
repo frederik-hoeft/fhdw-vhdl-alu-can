@@ -618,18 +618,12 @@ begin
 
     set_cout : process(reg_cmd, result, reg_a, reg_b)
     begin
-        -- set carry bit for signed 8 bit addition/subtraction
-        -- apparently, for addition, carry is set if the result is greater than 127 (makes sense)
-        -- however, for subtraction, carry is set if "the unsigned value of the first operand is less than the unsigned value of the second operand"
-        -- idk, I'll just trust the internet on this one
-        if (reg_cmd = "0000" and result > 127) or (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
+        if (reg_cmd = "0000" and ((("0" & reg_a) + ("0" & reg_b)) > 255)) then
             cout <= '1';
-        -- set carry bit for 8 bit negation, if the result is negative
-        -- simply index the MSB of the low byte and be done with it
+        elsif (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
+            cout <= '1';
         elsif (reg_cmd = "0100" and result(7) = '1') then
             cout <= '1';
-        -- set carry bit for 8 bit left shift, if the result is greater than 127
-        -- not sure if this is correct, but it makes sense to me. left shift is just multiplication by 2
         elsif (reg_cmd = "0101" and result > 127) then
             cout <= '1';
         else
