@@ -616,16 +616,16 @@ begin
         end if;
     end process;
 
-    set_cout : process(reg_cmd, result, reg_a, reg_b)
+    set_cout : process(reg_cmd, reg_a, reg_b)
     begin
         if (reg_cmd = "0000" and (unsigned(("0" & reg_a) + ("0" & reg_b)) > 255)) then
             cout <= '1';
         elsif (reg_cmd = "0001" and unsigned(reg_a) < unsigned(reg_b)) then
             cout <= '1';
-        elsif (reg_cmd = "0100" and result(7) = '1') then
-            cout <= '1';
-        elsif (reg_cmd = "0101" and result > 127) then
-            cout <= '1';
+        elsif (reg_cmd = "0100" and reg_a /= -128) then
+            cout <= not reg_a(7);
+        elsif (reg_cmd = "0101") then
+            cout <= reg_a(7);
         else
             cout <= '0';
         end if;
