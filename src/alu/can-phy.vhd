@@ -93,9 +93,9 @@ architecture behavioral of can_phy is
     
     -- the stuffing register contains the last 5 bits that were transmitted
     -- we need to keep track of them to know when to insert a stuffing bit
-    -- at the beginning we don't know what the last 5 bits were, so we just set them to Z
+    -- at the beginning we don't know what the last 5 bits were, so we just set them to X
     -- Idk if this works in reality, but it works in simulation, and that's all that matters :)
-    signal stuffing, stuffing_next : std_logic_vector(4 downto 0) := (others => 'Z');
+    signal stuffing, stuffing_next : std_logic_vector(4 downto 0) := (others => 'X');
 
     -- whether or not we need to insert a stuffing bit
     signal requires_stuffing : boolean;
@@ -132,7 +132,7 @@ begin
                 tx_buffer_1 <= (others => '0');
                 tx_buffer_0 <= (others => '0');
                 tx_cycle_counter <= 1;
-                stuffing <= (others => 'Z');
+                stuffing <= (others => 'X');
             else
                 state <= next_state;
                 tx_crc_buffer <= tx_crc_buffer_next;
@@ -401,7 +401,7 @@ begin
     begin
         -- if we are buffering (state before transmission), reset the stuffing register to tri-state
         if (state = buffering) then
-            stuffing_next <= (others => 'Z');
+            stuffing_next <= (others => 'X');
         -- if there is no simulated rising edge clock, we hold the stuffing register
         elsif (not rising_edge_tx_clock) then
             stuffing_next <= stuffing;
