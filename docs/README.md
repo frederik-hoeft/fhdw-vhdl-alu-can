@@ -1,6 +1,6 @@
 # VHDL ALU + CAN
 
-_Gruppe: Ben Bekir Ertugrul, Frederik Höft und Manuele Waldheim_
+_Gruppe: Ben Bekir Ertugrul, Frederik Höft, Manuele Waldheim und Henri Betz_
 _Ziel: Maximale Timingperformance_
 
 Dieses Dokument dient als Übersicht der erbrachten Leistungen innerhalb des dritten (und letzten) VHDL-Projektes.

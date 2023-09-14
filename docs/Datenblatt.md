@@ -1,6 +1,6 @@
 # VHDL ALU + CAN - Datenblatt
 
-_Gruppe: Ben Bekir Ertugrul, Frederik Höft und Manuele Waldheim_
+_Gruppe: Ben Bekir Ertugrul, Frederik Höft, Manuele Waldheim und Henri Betz_
 _Ziel: Maximale Timingperformance_
 
 Dieses Dokument liefert eine kurze technische Übersicht der VHDL-ALU und des CAN-Controllers. Es ist als Ergänzung zur README gedacht und enthält Informationen, die für die Nutzung der ALU und des CAN-Controllers relevant sind, ggf. aber nicht weiter auf Design-Entscheidungen eingehen. Für weitere Informationen zu Design-Entscheidungen und Implementierungsdetails wird auf die README verwiesen. Konkrete Informationen zu den VHDL-Modulen sind in den jeweiligen VHDL-Dateien zu finden.
